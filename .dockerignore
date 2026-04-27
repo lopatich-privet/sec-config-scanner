@@ -1,0 +1,35 @@
+# Build artifacts
+*.exe
+config-analyzer
+
+# Test
+testdata/
+*_test.go
+
+# CI/CD
+.git/
+.github/
+.gitignore
+.dockerignore
+Makefile
+.golangci.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation
+*.md
+LICENSE
+
+# Generated
+api/gen/
+
+# Misc
+.DS_Store
+Thumbs.db
+.env
+.env.*
+vendor/
