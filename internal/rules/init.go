@@ -9,3 +9,7 @@ func GetDefaultRules() []Rule {
 		NewWeakAlgorithmRule(),
 	}
 }
+
+func GetFileModeRules() []Rule {
+	return append(GetDefaultRules(), NewFilePermissionRule())
+}

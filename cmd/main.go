@@ -65,8 +65,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		// Анализируем каждую конфигурацию
-		analyzerInstance := analyzer.NewAnalyzer(rules.GetDefaultRules())
+		// Анализируем каждую конфигурацию с проверкой file permissions
+		analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 		var allIssues []rules.Issue
 
 		for _, config := range configs {
@@ -109,8 +109,8 @@ func main() {
 		}
 	}
 
-	// Создаем анализатор с дефолтными правилами
-	analyzerInstance := analyzer.NewAnalyzer(rules.GetDefaultRules())
+	// Создаём анализатор с проверкой file permissions для файлов
+	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 
 	// Анализируем конфиг
 	issues := analyzerInstance.Analyze(config.Data)
