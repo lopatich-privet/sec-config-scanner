@@ -5,7 +5,8 @@ import (
 	"config-analyzer/internal/output"
 	"config-analyzer/internal/parser"
 	"config-analyzer/internal/rules"
-	"config-analyzer/server/http"
+	"config-analyzer/server/grpc"
+	httpserver "config-analyzer/server/http"
 	"log/slog"
 	"os"
 
@@ -16,19 +17,31 @@ func main() {
 	var silent bool
 	var useStdin bool
 	var serverMode bool
+	var grpcMode bool
 	var serverPort string
 
 	flag.BoolVarP(&silent, "silent", "s", false, "не выходить с ошибкой при наличии проблем")
 	flag.BoolVar(&useStdin, "stdin", false, "прочитать конфигурацию из стандартного потока ввода")
 	flag.BoolVar(&serverMode, "server", false, "запустить HTTP сервер")
-	flag.StringVar(&serverPort, "port", "8080", "порт для HTTP сервера")
+	flag.BoolVar(&grpcMode, "grpc", false, "запустить gRPC сервер")
+	flag.StringVar(&serverPort, "port", "8080", "порт для сервера")
 	flag.Parse()
 
-	// Режим сервера
+	// Режим HTTP сервера
 	if serverMode {
-		server := http.NewServer(serverPort)
+		server := httpserver.NewServer(serverPort)
 		if err := server.Start(); err != nil {
-			slog.Error("ошибка запуска сервера", "error", err)
+			slog.Error("ошибка запуска HTTP сервера", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Режим gRPC сервера
+	if grpcMode {
+		server := grpc.NewServer(serverPort)
+		if err := server.Start(); err != nil {
+			slog.Error("ошибка запуска gRPC сервера", "error", err)
 			os.Exit(1)
 		}
 		return

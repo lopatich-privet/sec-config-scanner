@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package analyzer;
+
+option go_package = "config-analyzer/api/gen";
+
+service AnalyzerService {
+  rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);
+}
+
+message AnalyzeRequest {
+  string format = 1;
+  bytes data = 2;
+}
+
+message Issue {
+  string severity = 1;
+  string field = 2;
+  string description = 3;
+  string advice = 4;
+}
+
+message AnalyzeResponse {
+  bool success = 1;
+  repeated Issue issues = 2;
+}
