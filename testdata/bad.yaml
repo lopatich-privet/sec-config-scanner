@@ -1,0 +1,20 @@
+version: 2.2
+log:
+  output: stdout
+  level: debug
+
+server:
+  host: 0.0.0.0
+  port: 8080
+
+database:
+  host: localhost
+  port: 5432
+  username: admin
+  password: mysecretpassword
+
+storage:
+  digest-algorithm: MD5
+
+tls:
+  enabled: false

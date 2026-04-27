@@ -1,0 +1,15 @@
+Тестовое go.md
+
+
+/bin/
+*.exe
+
+vendor/
+
+api/gen/
+
+.DS_Store
+Thumbs.db
+
+.env
+.env.*
