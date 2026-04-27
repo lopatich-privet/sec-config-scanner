@@ -42,7 +42,7 @@ func main() {
 	if useStdin {
 		config, err = parser.ParseFromStdin()
 		if err != nil {
-			slog.Error("ошибка чтения из stdin", "error ", err)
+			slog.Error("ошибка чтения из stdin", "error", err)
 			os.Exit(1)
 		}
 	} else {

@@ -31,7 +31,3 @@ func (a *Analyzer) AddRule(rule rules.Rule) {
 func (a *Analyzer) GetRules() []rules.Rule {
 	return a.rules
 }
-
-
-
-

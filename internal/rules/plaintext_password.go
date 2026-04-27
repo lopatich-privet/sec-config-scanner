@@ -81,22 +81,3 @@ func isHash(s string) bool {
 func NewPlaintextPasswordRule() Rule {
 	return &PlaintextPasswordRule{}
 }
-
-func traverseAndCheck(cfg map[string]any, path string, checker func(path string, value any) bool) {
-	for key, value := range cfg {
-		currentPath := key
-		if path != "" {
-			currentPath = path + "." + key
-		}
-
-		switch v := value.(type) {
-		case map[string]any:
-			traverseAndCheck(v, currentPath, checker)
-		default:
-			if checker(currentPath, value) {
-				// Если вернули true, нашли проблему в этой ветке
-				continue
-			}
-		}
-	}
-}

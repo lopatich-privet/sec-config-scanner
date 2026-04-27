@@ -6,13 +6,6 @@ import (
 	"sort"
 )
 
-type IssueResponse struct {
-	Severity    string `json:"severity"`
-	Field       string `json:"field"`
-	Description string `json:"description"`
-	Advice      string `json:"advice"`
-}
-
 type OutputFormat string
 
 const (

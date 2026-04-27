@@ -2,7 +2,6 @@ package http
 
 import (
 	"config-analyzer/internal/analyzer"
-	"config-analyzer/internal/output"
 	"config-analyzer/internal/rules"
 	"encoding/json"
 	"fmt"
@@ -16,13 +15,20 @@ type Server struct {
 }
 
 type AnalyzeRequest struct {
-	Format string          `json:"format"` // "json" or "yaml"
+	Format string          `json:"format"`
 	Data   json.RawMessage `json:"data"`
 }
 
+type IssueResponse struct {
+	Severity    string `json:"severity"`
+	Field       string `json:"field"`
+	Description string `json:"description"`
+	Advice      string `json:"advice"`
+}
+
 type AnalyzeResponse struct {
-	Success bool                   `json:"success"`
-	Issues  []output.IssueResponse `json:"issues"`
+	Success bool            `json:"success"`
+	Issues  []IssueResponse `json:"issues"`
 }
 
 func NewServer(port string) *Server {
@@ -42,34 +48,37 @@ func (s *Server) Start() error {
 
 func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{"error": "method not allowed"})
 		return
 	}
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "failed to read request body"})
 		return
 	}
 
-	// Парсим JSON конфиг напрямую
 	var config map[string]any
 	if err := json.Unmarshal(body, &config); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to parse JSON: %v", err), http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": fmt.Sprintf("failed to parse JSON: %v", err)})
 		return
 	}
 
-	// Анализируем конфиг
 	issues := s.analyzer.Analyze(config)
 
-	// Формируем ответ
 	response := AnalyzeResponse{
 		Success: len(issues) == 0,
-		Issues:  make([]output.IssueResponse, len(issues)),
+		Issues:  make([]IssueResponse, len(issues)),
 	}
 
 	for i, issue := range issues {
-		response.Issues[i] = output.IssueResponse{
+		response.Issues[i] = IssueResponse{
 			Severity:    string(issue.Severity),
 			Field:       issue.Field,
 			Description: issue.Description,
@@ -78,10 +87,14 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		fmt.Printf("error encoding response: %v\n", err)
+	}
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
+	if _, err := w.Write([]byte("OK")); err != nil {
+		fmt.Printf("error writing health response: %v\n", err)
+	}
 }
