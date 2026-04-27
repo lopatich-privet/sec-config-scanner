@@ -16,12 +16,14 @@ import (
 func main() {
 	var silent bool
 	var useStdin bool
+	var useDirectory bool
 	var serverMode bool
 	var grpcMode bool
 	var serverPort string
 
 	flag.BoolVarP(&silent, "silent", "s", false, "не выходить с ошибкой при наличии проблем")
 	flag.BoolVar(&useStdin, "stdin", false, "прочитать конфигурацию из стандартного потока ввода")
+	flag.BoolVar(&useDirectory, "dir", false, "прочитать все конфигурации из директории (рекурсивно)")
 	flag.BoolVar(&serverMode, "server", false, "запустить HTTP сервер")
 	flag.BoolVar(&grpcMode, "grpc", false, "запустить gRPC сервер")
 	flag.StringVar(&serverPort, "port", "8080", "порт для сервера")
@@ -49,6 +51,41 @@ func main() {
 
 	args := flag.Args()
 
+	// Режим директории
+	if useDirectory {
+		if len(args) == 0 {
+			slog.Error("использование: config-analyzer --dir укажите путь к директории")
+			flag.PrintDefaults()
+			os.Exit(1)
+		}
+
+		configs, err := parser.ParseDirectory(args[0])
+		if err != nil {
+			slog.Error("ошибка парсинга директории", "error", err)
+			os.Exit(1)
+		}
+
+		// Анализируем каждую конфигурацию
+		analyzerInstance := analyzer.NewAnalyzer(rules.GetDefaultRules())
+		var allIssues []rules.Issue
+
+		for _, config := range configs {
+			issues := analyzerInstance.Analyze(config.Data)
+			allIssues = append(allIssues, issues...)
+		}
+
+		// Выводим результат
+		out := output.NewOutput(allIssues)
+		out.Print()
+
+		// Если есть проблемы и не включён silent режим, выходим с ошибкой
+		if out.HasIssues() && !silent {
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Режим stdin или файл
 	var config *parser.Config
 	var err error
 
