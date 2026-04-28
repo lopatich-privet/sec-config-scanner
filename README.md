@@ -29,30 +29,30 @@ docker run --rm config-analyzer --help
 ### Анализ файла
 
 ```bash
-config-analyzer config.json
-config-analyzer config.yaml
+.\config-analyzer config.json
+.\config-analyzer config.yaml
 ```
 
 ### Анализ из stdin
 
 ```bash
-cat config.json | config-analyzer --stdin
+cat config.json | .\config-analyzer --stdin
 ```
 
 ### Рекурсивный анализ директории
 
 ```bash
-config-analyzer --dir /path/to/configs
+.\config-analyzer --dir /path/to/configs
 ```
 
 ### Флаг silent
 
 ```bash
 # Без флага -s: выход с кодом 1, если найдены проблемы
-config-analyzer config.json
+.\config-analyzer config.json
 
 # С флагом -s: вывод результатов, но выход с кодом 0
-config-analyzer --silent config.json
+.\config-analyzer --silent config.json
 ```
 
 ## HTTP Server
@@ -60,7 +60,7 @@ config-analyzer --silent config.json
 ### Запуск
 
 ```bash
-config-analyzer --server --port 8080
+.\config-analyzer --server --port 8080
 ```
 
 ### Анализ через HTTP API
@@ -100,7 +100,7 @@ curl http://localhost:8080/health
 ### Запуск
 
 ```bash
-config-analyzer --grpc --port 9090
+.\config-analyzer --grpc --port 9090
 ```
 
 ### Пример клиента
@@ -109,7 +109,7 @@ config-analyzer --grpc --port 9090
 
 ```bash
 # Запуск gRPC сервера
-config-analyzer --grpc --port 9090
+.\config-analyzer --grpc --port 9090
 
 # Запуск клиента (в другом терминале)
 go run ./cmd/grpc-client/main.go
@@ -123,7 +123,7 @@ go run ./cmd/grpc-client/main.go
 
 **Анализ файла с проблемами:**
 ```bash
-config-analyzer testdata/bad.json
+.\config-analyzer testdata/bad.json
 ```
 
 **Результат:**
@@ -139,7 +139,7 @@ LOW: логирование в debug-режиме. Поменяйте режим
 
 **Анализ безопасной конфигурации:**
 ```bash
-config-analyzer testdata/safe.json
+.\config-analyzer testdata/safe.json
 ```
 
 **Результат:**
@@ -155,7 +155,7 @@ config-analyzer testdata/safe.json
 
 **Рекурсивный анализ:**
 ```bash
-config-analyzer --dir testdata
+.\config-analyzer --dir testdata
 ```
 
 ---
@@ -166,7 +166,7 @@ config-analyzer --dir testdata
 
 **Справка:**
 ```bash
-config-analyzer --help
+.\config-analyzer --help
 ```
 
 ---
