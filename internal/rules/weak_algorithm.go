@@ -52,8 +52,8 @@ func (r *WeakAlgorithmRule) Check(cfg map[string]any) []Issue {
 					issues = append(issues, Issue{
 						Severity:    HIGH,
 						Field:       path,
-						Description: fmt.Sprintf("слабый алгоритм — %s", str),
-						Advice:      "Используйте SHA-256 или выше.",
+						Description: fmt.Sprintf("слишком слабый алгоритм - %s", str),
+						Advice:      "Замените его на более безопасный.",
 					})
 					return true
 				}

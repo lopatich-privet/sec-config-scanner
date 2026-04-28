@@ -25,7 +25,7 @@ func (r *TLSDisabledRule) Check(cfg map[string]any) []Issue {
 			issues = append(issues, Issue{
 				Severity:    HIGH,
 				Field:       path,
-				Description: "TLS проверка отключена (insecure_skip_verify)",
+				Description: "TLS проверка отключена",
 				Advice:      "Включите TLS в продакшн-окружении.",
 			})
 			return true

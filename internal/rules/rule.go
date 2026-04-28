@@ -18,7 +18,7 @@ type Issue struct {
 }
 
 func (i Issue) String() string {
-	return fmt.Sprintf("%s: %s (%s). %s", i.Severity, i.Description, i.Field, i.Advice)
+	return fmt.Sprintf("%s: %s. %s", i.Severity, i.Description, i.Advice)
 }
 
 type Rule interface {
