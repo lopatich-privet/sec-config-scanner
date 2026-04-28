@@ -7,11 +7,26 @@ import (
 	"config-analyzer/internal/rules"
 	"config-analyzer/server/grpc"
 	httpserver "config-analyzer/server/http"
+	"fmt"
 	"log/slog"
 	"os"
 
 	flag "github.com/spf13/pflag"
 )
+
+func init() {
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Анализатор конфигурационных файлов на предмет уязвимостей безопасности\n\n")
+		fmt.Fprintf(os.Stderr, "Использование:\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer [флаги] <путь_к_файлу>\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer [флаги] --dir <путь_к_директории>\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer [флаги] --stdin\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer --server [--port <порт>]\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer --grpc [--port <порт>]\n\n")
+		fmt.Fprintf(os.Stderr, "Флаги:\n")
+		flag.PrintDefaults()
+	}
+}
 
 func main() {
 	var silent bool
@@ -26,7 +41,7 @@ func main() {
 	flag.BoolVar(&useDirectory, "dir", false, "прочитать все конфигурации из директории (рекурсивно)")
 	flag.BoolVar(&serverMode, "server", false, "запустить HTTP сервер")
 	flag.BoolVar(&grpcMode, "grpc", false, "запустить gRPC сервер")
-	flag.StringVar(&serverPort, "port", "8080", "порт для сервера")
+	flag.StringVar(&serverPort, "port", "8080", "порт для сервера (по умолчанию: 8080)")
 	flag.Parse()
 
 	// Режим HTTP сервера
