@@ -2,7 +2,7 @@
 
 Анализатор конфигурационных файлов (JSON/YAML) на предмет уязвимостей и проблем безопасности.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/ya/sec-config-scanner)](https://goreportcard.com/report/github.com/ya/sec-config-scanner)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lopatich-privet/sec-config-scanner)](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
 [![Go Version](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![golangci-lint](https://img.shields.io/badge/golangci--linted-success)](https://golangci-lint.run)
@@ -12,13 +12,13 @@
 ### С помощью Go (рекомендуется)
 
 ```bash
-go install github.com/ya/sec-config-scanner@latest
+go install github.com/lopatich-privet/sec-config-scanner@latest
 ```
 
 ### Сборка из исходников
 
 ```bash
-git clone https://github.com/ya/sec-config-scanner.git
+git clone https://github.com/lopatich-privet/sec-config-scanner.git
 cd sec-config-scanner
 go build -o config-analyzer ./cmd/main.go
 ```
