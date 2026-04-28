@@ -2,10 +2,10 @@
 
 Анализатор конфигурационных файлов (JSON/YAML) на предмет уязвимостей и проблем безопасности.
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/lopatich-privet/sec-config-scanner)](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
-[![Go Version](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![golangci-lint](https://img.shields.io/badge/golangci--linted-success)](https://golangci-lint.run)
+[Go Report Card](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
+[Go Version](https://go.dev/)
+[License: MIT](https://opensource.org/licenses/MIT)
+[golangci-lint](https://golangci-lint.run)
 
 ## Установка
 
@@ -29,30 +29,30 @@ docker run --rm config-analyzer --help
 ### Анализ файла
 
 ```bash
-.\config-analyzer config.json
-.\config-analyzer config.yaml
+./config-analyzer config.json
+./config-analyzer config.yaml
 ```
 
 ### Анализ из stdin
 
 ```bash
-cat config.json | .\config-analyzer --stdin
+cat config.json | ./config-analyzer --stdin
 ```
 
 ### Рекурсивный анализ директории
 
 ```bash
-.\config-analyzer --dir /path/to/configs
+./config-analyzer --dir /path/to/configs
 ```
 
 ### Флаг silent
 
 ```bash
 # Без флага -s: выход с кодом 1, если найдены проблемы
-.\config-analyzer config.json
+./config-analyzer config.json
 
 # С флагом -s: вывод результатов, но выход с кодом 0
-.\config-analyzer --silent config.json
+./config-analyzer --silent config.json
 ```
 
 ## HTTP Server
@@ -60,22 +60,33 @@ cat config.json | .\config-analyzer --stdin
 ### Запуск
 
 ```bash
-.\config-analyzer --server --port 8080
+./config-analyzer --server --port 8080
 ```
 
 ### Анализ через HTTP API
 
-**JSON:**
+**Linux/Mac (bash):**
 
 ```bash
 curl -X POST http://localhost:8080/analyze \
   -H "Content-Type: application/json" \
   -d '{
-    "data": {
-      "log": {"level": "debug"},
-      "password": "secret123"
-    }
+    "log": {"level": "debug"},
+    "password": "secret123"
   }'
+```
+
+**Windows (PowerShell):**
+
+```powershell
+$body = @{
+    log = @{
+        level = "debug"
+    }
+    password = "secret123"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/json" -Body $body
 ```
 
 **YAML:**
@@ -83,9 +94,8 @@ curl -X POST http://localhost:8080/analyze \
 ```bash
 curl -X POST http://localhost:8080/analyze \
   -H "Content-Type: application/yaml" \
-  -d 'data:
-  log:
-    level: debug
+  -d 'log:
+  level: debug
   password: secret123'
 ```
 
@@ -95,12 +105,20 @@ curl -X POST http://localhost:8080/analyze \
 curl http://localhost:8080/health
 ```
 
+**Ответ:**
+
+```json
+{
+  "status": "ok"
+}
+```
+
 ## gRPC Server
 
 ### Запуск
 
 ```bash
-.\config-analyzer --grpc --port 9090
+./config-analyzer --grpc --port 9090
 ```
 
 ### Пример клиента
@@ -109,115 +127,35 @@ curl http://localhost:8080/health
 
 ```bash
 # Запуск gRPC сервера
-.\config-analyzer --grpc --port 9090
+./config-analyzer --grpc --port 9090
 
-# Запуск клиента (в другом терминале)
+# Запуск клиента (в другом терминале, из корня проекта)
 go run ./cmd/grpc-client/main.go
+
+# Запуск gRPC клиента (с использованием клиентского режима)
+cd cmd/grpc-client && go run main.go
 ```
 
 ## Демонстрация работы
 
 ### CLI режим
 
-![CLI - Анализ конфигурации с уязвимостями](screenshots/cli_bad.png)
+CLI - Анализ конфигурации с уязвимостями
 
 **Анализ файла с проблемами:**
+
 ```bash
-.\config-analyzer testdata/bad.json
+./config-analyzer testdata/bad.json
 ```
 
 **Результат:**
+
 ```
 HIGH: пароль в открытом виде. Используйте переменные окружения или vault для хранения секретов.
 HIGH: TLS проверка отключена. Включите TLS в продакшн-окружении.
 HIGH: слишком слабый алгоритм - RC4. Замените его на более безопасный.
 MEDIUM: сервис слушает на 0.0.0.0 без ограничений. Ограничьте bind конкретным интерфейсом или внутренним IP.
 LOW: логирование в debug-режиме. Поменяйте режим на более избирательный (info+).
-```
-
-![CLI - Безопасная конфигурация](screenshots/cli_safe.png)
-
-**Анализ безопасной конфигурации:**
-```bash
-.\config-analyzer testdata/safe.json
-```
-
-**Результат:**
-```
-✓ Конфигурация безопасна
-```
-
----
-
-### CLI режим — анализ директории
-
-![CLI - Рекурсивный анализ директории](screenshots/cli_dir.png)
-
-**Рекурсивный анализ:**
-```bash
-.\config-analyzer --dir testdata
-```
-
----
-
-### CLI режим — помощь
-
-![CLI - Справка по флагам](screenshots/cli_help.png)
-
-**Справка:**
-```bash
-.\config-analyzer --help
-```
-
----
-
-### CLI режим — stdin
-
-![CLI - Чтение из stdin](screenshots/cli_stdin.png)
-
-**Анализ из stdin:**
-```bash
-cat config.json | config-analyzer --stdin
-```
-
----
-
-### HTTP Server
-
-![HTTP Server - Health Check](screenshots/http-health.png)
-
-**Health check:**
-```bash
-curl http://localhost:8080/health
-```
-
-**Ответ:**
-```json
-{"status":"ok"}
-```
-
-![HTTP Server - Анализ через API](screenshots/http-analyze.png)
-
-**Анализ через API:**
-```bash
-curl -X POST http://localhost:8080/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"data": {"log": {"level": "debug"}}'
-```
-
----
-
-### gRPC Server
-
-![gRPC Client - Полное тестирование](screenshots/grpc-client.png)
-
-**Запуск сервера и тестирование через клиента:**
-```bash
-# Запуск gRPC сервера
-config-analyzer --grpc --port 9090
-
-# Запуск клиента (в другом терминале)
-go run ./cmd/grpc-client/main.go
 ```
 
 ---
@@ -363,18 +301,20 @@ make build
 - `make docker` — собирает Docker-образ
 - `make run` — запускает бинарник
 - `make run-server` — запускает HTTP сервер на порту 8080
-- `make run-grpc` — запускает gRPC сервер на порту 8080
+- `make run-grpc` — запускает gRPC сервер на порту 9090
 - `make proto` — пересобирает proto-файлы
 
 ---
 
 ## Severity
 
+
 | Severity | Описание                                                   |
 | -------- | ---------------------------------------------------------- |
 | HIGH     | Критические уязвимости, требующие немедленного исправления |
 | MEDIUM   | Потенциальные проблемы безопасности                        |
 | LOW      | Рекомендации по улучшению                                  |
+
 
 ---
 
@@ -389,49 +329,13 @@ docker build -t config-analyzer .
 ### Запуск анализа файла
 
 ```bash
-docker run --rm -v $(pwd):/app -w /app config-analyzer config.json
+docker run --rm -v $(pwd):/app -w /app ./config-analyzer config.json
 ```
 
 ### Запуск HTTP сервера
 
 ```bash
-docker run --rm -p 8080:8080 config-analyzer --server
-```
-
----
-
-## Примеры конфигураций
-
-### Проблемная конфигурация (пример config.json)
-
-```json
-{
-  "log": {
-    "level": "debug"
-  },
-  "database": {
-    "host": "0.0.0.0",
-    "password": "secret123",
-    "ssl": {
-      "insecure_skip_verify": true,
-      "enabled": false
-    }
-  },
-  "crypto": {
-    "algorithm": "md5"
-  }
-}
-```
-
-**Результат:**
-
-```
-HIGH: пароль в открытом виде (database.password). Используйте переменные окружения или vault для хранения секретов.
-HIGH: TLS проверка отключена (database.ssl.insecure_skip_verify). Включите TLS в продакшн-окружении.
-HIGH: TLS отключён (database.ssl.enabled). Включите TLS в продакшн-окружении.
-HIGH: слабый алгоритм — md5 (crypto.algorithm). Используйте SHA-256 или выше.
-MEDIUM: сервис слушает на 0.0.0.0 без ограничений (database.host). Ограничьте bind конкретным интерфейсом или внутренним IP.
-LOW: логирование в debug-режиме (log.level). Поменяйте режим на более избирательный (info+).
+docker run --rm -p 8080:8080 ./config-analyzer --server
 ```
 
 ---
@@ -442,8 +346,77 @@ MIT
 
 ---
 
-## Дополнительные ресурсы
+## Troubleshooting
 
-- [Go Best Practices](https://go.dev/doc/effective_go)
-- [CIS Benchmarks](https://www.cisecurity.org/benchmark)
-- [OWASP ASVS](https://owasp.org/www-project-application-security-verification-standard)
+### Порт уже занят
+
+Если при запуске сервера получаете ошибку "address already in use", порт 8080 может быть занят другим процессом. Проверьте и остановите другие процессы:
+
+```bash
+# Linux/Mac
+lsof -i :8080
+netstat -an | grep 8080
+
+# Windows
+netstat -ano | findstr :8080
+```
+
+### Windows PowerShell и одинарные кавычки
+
+На Windows PowerShell может интерпретировать одинарные кавычки неправильно. Используйте двойные кавычки `"..."` вместо одинарных `'...'`:
+
+**Неправильно:**
+
+```powershell
+curl -X POST http://localhost:8080/analyze -d '{"log": {"level": "debug"}}'
+```
+
+**Правильно:**
+
+```powershell
+$body = @{
+    log = @{
+        level = "debug"
+    }
+    password = "secret123"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/json" -Body $body
+```
+
+### gRPC клиент не находит файлы
+
+Если gRPC клиент выдаёт ошибку "cannot find path" при попытке открыть `testdata/` — запустите клиент из подпапки, а не из корня проекта:
+
+```bash
+# Неправильно (из корня проекта — не найдёт testdata/)
+go run ./cmd/grpc-client/main.go
+
+# Правильно (из cmd/grpc-client/ — найдёт testdata/)
+cd cmd/grpc-client
+go run main.go
+```
+
+### Протоколы в примерах
+
+Для yaml запросов используйте тройные кавычки в PowerShell:
+
+**Неправильно:**
+
+```powershell
+curl -X POST http://localhost:8080/analyze -d 'data:\r\n  log:\r\n    level: debug\r\n  password: secret123'
+```
+
+**Правильно:**
+
+```powershell
+$body = @"
+data:
+  log:
+    level: debug
+  password: secret123
+"@
+
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/yaml" -Body $body
+```
+
