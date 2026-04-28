@@ -1,7 +1,6 @@
 package rules
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -13,36 +12,12 @@ func (r *PlaintextPasswordRule) Name() string {
 
 func (r *PlaintextPasswordRule) Check(cfg map[string]any) []Issue {
 	var issues []Issue
-
 	passwordKeywords := []string{"password", "passwd", "pwd", "secret"}
 
 	traverseAndCheck(cfg, "", func(path string, value any) bool {
-		if value == nil {
-			return false
-		}
-
-		str, ok := value.(string)
-		if !ok {
-			return false
-		}
-
-		if str == "" {
-			return false
-		}
-
-		lowerPath := strings.ToLower(path)
-		for _, keyword := range passwordKeywords {
-			if strings.Contains(lowerPath, keyword) {
-				if !isHash(str) {
-					issues = append(issues, Issue{
-						Severity:    HIGH,
-						Field:       path,
-						Description: fmt.Sprintf("пароль в открытом виде"),
-						Advice:      "Используйте переменные окружения или vault для хранения секретов.",
-					})
-					return true
-				}
-			}
+		if issue := checkPlaintextPassword(path, value, passwordKeywords); issue != nil {
+			issues = append(issues, *issue)
+			return true
 		}
 		return false
 	})
@@ -50,32 +25,85 @@ func (r *PlaintextPasswordRule) Check(cfg map[string]any) []Issue {
 	return issues
 }
 
+func checkPlaintextPassword(path string, value any, keywords []string) *Issue {
+	if !isValidStringValue(value) {
+		return nil
+	}
+
+	str := value.(string)
+	if isHash(str) {
+		return nil
+	}
+
+	if !containsPasswordKeyword(path, keywords) {
+		return nil
+	}
+
+	return &Issue{
+		Severity:    HIGH,
+		Field:       path,
+		Description: "пароль в открытом виде",
+		Advice:      "Используйте переменные окружения или vault для хранения секретов.",
+	}
+}
+
+func isValidStringValue(value any) bool {
+	str, ok := value.(string)
+	return ok && str != ""
+}
+
+func containsPasswordKeyword(path string, keywords []string) bool {
+	lowerPath := strings.ToLower(path)
+	for _, keyword := range keywords {
+		if strings.Contains(lowerPath, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
 func isHash(s string) bool {
-	// Проверяем переменные окружения: $VAR или ${VAR}
 	if strings.HasPrefix(s, "$") {
 		return true
 	}
 
-	// Проверяем, выглядит ли строка как хеш
-	if len(s) == 32 || len(s) == 40 || len(s) == 64 || len(s) == 128 {
-		// MD5: 32 hex chars
-		// SHA1: 40 hex chars
-		// SHA256: 64 hex chars
-		// SHA512: 128 hex chars
-		for _, c := range s {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
-				return false
-			}
-		}
+	if isHexString(s) {
 		return true
 	}
 
-	// Проверяем bcrypt (60 chars, с префиксом)
-	if len(s) == 60 && (strings.HasPrefix(s, "$2a$") || strings.HasPrefix(s, "$2b$")) {
+	if isBcryptHash(s) {
 		return true
 	}
 
 	return false
+}
+
+func isHexString(s string) bool {
+	if len(s) != 32 && len(s) != 40 && len(s) != 64 && len(s) != 128 {
+		return false
+	}
+
+	return isAllHexChars(s)
+}
+
+func isAllHexChars(s string) bool {
+	for _, c := range s {
+		if !isHexChar(c) {
+			return false
+		}
+	}
+	return true
+}
+
+func isHexChar(c rune) bool {
+	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')
+}
+
+func isBcryptHash(s string) bool {
+	if len(s) != 60 {
+		return false
+	}
+	return strings.HasPrefix(s, "$2a$") || strings.HasPrefix(s, "$2b$")
 }
 
 func NewPlaintextPasswordRule() Rule {

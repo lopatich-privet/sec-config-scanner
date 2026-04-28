@@ -62,6 +62,10 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.AnalyzeResponse, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, fmt.Errorf("request canceled: %w", err)
+	}
+
 	var config map[string]any
 
 	switch req.Format {
