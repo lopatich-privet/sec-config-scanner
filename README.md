@@ -181,6 +181,135 @@ func main() {
 }
 ```
 
+## 📸 Демонстрация работы
+
+### CLI режим
+
+![CLI - Анализ конфигурации с уязвимостями](screenshots/cli_bad.png)
+
+**Анализ файла с проблемами:**
+```bash
+go run .\cmd\main.go testdata\bad.json
+```
+
+**Результат:**
+```
+HIGH: пароль в открытом виде. Используйте переменные окружения или vault для хранения секретов.
+HIGH: TLS проверка отключена. Включите TLS в продакшн-окружении.
+HIGH: слишком слабый алгоритм - RC4. Замените его на более безопасный.
+MEDIUM: сервис слушает на 0.0.0.0 без ограничений. Ограничьте bind конкретным интерфейсом или внутренним IP.
+LOW: логирование в debug-режиме. Поменяйте режим на более избирательный (info+).
+```
+
+![CLI - Безопасная конфигурация](screenshots/cli_safe.png)
+
+**Анализ безопасной конфигурации:**
+```bash
+go run .\cmd\main.go testdata\safe.json
+```
+
+**Результат:**
+```
+✓ Конфигурация безопасна
+```
+
+### HTTP Server
+
+![HTTP Server - Health Check](screenshots/http-health.png)
+
+**Запуск и проверка:**
+```bash
+# Запуск сервера
+Start-Process -FilePath "go" -ArgumentList "run .\cmd\main.go --server --port 8080" -NoNewWindow
+
+# Health check
+Invoke-WebRequest -Uri "http://localhost:8080/health" -UseBasicParsing
+```
+
+**Ответ:**
+```json
+{"status":"ok"}
+```
+
+![HTTP Server - Анализ через API](screenshots/http-analyze.png)
+
+**Анализ через API:**
+```powershell
+$content = Get-Content "testdata\bad.json" -Raw
+Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/json" -Body $content
+```
+
+**JSON ответ:**
+```json
+{
+  "success": false,
+  "issues": [
+    {
+      "severity": "HIGH",
+      "field": "database.password",
+      "description": "пароль в открытом виде",
+      "advice": "Используйте переменные окружения или vault для хранения секретов."
+    },
+    {
+      "severity": "HIGH",
+      "field": "crypto.cipher",
+      "description": "слишком слабый алгоритм - RC4",
+      "advice": "Замените его на более безопасный."
+    }
+    // ... остальные проблемы
+  ]
+}
+```
+
+### gRPC Server
+
+![gRPC Client - Полное тестирование](screenshots/grpc-client.png)
+
+**Запуск сервера и тестирование через клиента:**
+```bash
+# Запуск gRPC сервера
+Start-Process -FilePath "go" -ArgumentList "run .\cmd\main.go --grpc --port 9090" -NoNewWindow
+
+# Запуск клиента
+go run grpc_client.go
+```
+
+**Результат:**
+```
+=== Testing bad.json ===
+bad.json - Success: false, Issues found: 5
+  - LOW: логирование в debug-режиме
+  - HIGH: пароль в открытом виде
+  - MEDIUM: сервис слушает на 0.0.0.0 без ограничений
+  - HIGH: TLS проверка отключена
+  - HIGH: слишком слабый алгоритм - RC4
+
+=== Testing bad.yaml ===
+bad.yaml - Success: false, Issues found: 5
+  - LOW: логирование в debug-режиме
+  - HIGH: пароль в открытом виде
+  - MEDIUM: сервис слушает на 0.0.0.0 без ограничений
+  - HIGH: TLS отключён
+  - HIGH: слишком слабый алгоритм - MD5
+
+=== Testing safe.json ===
+safe.json - Success: true, Issues found: 0
+
+=== Testing safe.yaml ===
+safe.yaml - Success: true, Issues found: 0
+
+=== All gRPC tests completed! ===
+```
+
+**Полное тестовое покрытие:**
+- ✅ CLI режим (JSON/YAML)
+- ✅ Рекурсивный анализ директории
+- ✅ HTTP Server (REST API)
+- ✅ gRPC Server (RPC API)
+- ✅ Все 5 правил безопасности
+
+---
+
 ## Правила анализа
 
 ### 1. Debug Log (LOW)
