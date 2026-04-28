@@ -11,34 +11,30 @@ import (
 func ParseDirectory(dir string) ([]*Config, error) {
 	var configs []*Config
 
-	err := filepath.WalkDir(dir, func(path string, d os.DirEntry, err error) error {
+	walker := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip directories
 		if d.IsDir() {
 			return nil
 		}
 
-		// Only parse JSON/YAML files
-		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".json" && ext != ".yaml" && ext != ".yml" {
+		if !isConfigFile(path) {
 			return nil
 		}
 
-		// Parse the file
 		config, err := ParseFile(path)
 		if err != nil {
-			// Log error but continue with other files
 			fmt.Printf("warning: failed to parse %s: %v\n", path, err)
 			return nil
 		}
 
 		configs = append(configs, config)
 		return nil
-	})
+	}
 
+	err := filepath.WalkDir(dir, walker)
 	if err != nil {
 		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
@@ -48,4 +44,9 @@ func ParseDirectory(dir string) ([]*Config, error) {
 	}
 
 	return configs, nil
+}
+
+func isConfigFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".json" || ext == ".yaml" || ext == ".yml"
 }

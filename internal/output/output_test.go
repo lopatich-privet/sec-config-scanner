@@ -125,7 +125,7 @@ func TestOutput_IssueString(t *testing.T) {
 		Advice:      "test advice",
 	}
 
-	expected := "HIGH: test description (test.field). test advice"
+	expected := "HIGH: test description. test advice"
 	if got := issue.String(); got != expected {
 		t.Errorf("Issue.String() = %s, want %s", got, expected)
 	}

@@ -6,11 +6,11 @@ import (
 	"sort"
 )
 
-type OutputFormat string
+type Format string
 
 const (
-	FormatText OutputFormat = "text"
-	FormatJSON OutputFormat = "json"
+	FormatText Format = "text"
+	FormatJSON Format = "json"
 )
 
 type Output struct {

@@ -14,6 +14,15 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+type CLIConfig struct {
+	silent       bool
+	useStdin     bool
+	useDirectory bool
+	serverMode   bool
+	grpcMode     bool
+	serverPort   string
+}
+
 func init() {
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Анализатор конфигурационных файлов на предмет уязвимостей безопасности\n\n")
@@ -28,114 +37,137 @@ func init() {
 	}
 }
 
-func main() {
-	var silent bool
-	var useStdin bool
-	var useDirectory bool
-	var serverMode bool
-	var grpcMode bool
-	var serverPort string
-
-	flag.BoolVarP(&silent, "silent", "s", false, "не выходить с ошибкой при наличии проблем")
-	flag.BoolVar(&useStdin, "stdin", false, "прочитать конфигурацию из стандартного потока ввода")
-	flag.BoolVar(&useDirectory, "dir", false, "прочитать все конфигурации из директории (рекурсивно)")
-	flag.BoolVar(&serverMode, "server", false, "запустить HTTP сервер")
-	flag.BoolVar(&grpcMode, "grpc", false, "запустить gRPC сервер")
-	flag.StringVar(&serverPort, "port", "8080", "порт для сервера (по умолчанию: 8080)")
+func parseFlags() *CLIConfig {
+	var cfg CLIConfig
+	flag.BoolVarP(&cfg.silent, "silent", "s", false, "не выходить с ошибкой при наличии проблем")
+	flag.BoolVar(&cfg.useStdin, "stdin", false, "прочитать конфигурацию из стандартного потока ввода")
+	flag.BoolVar(&cfg.useDirectory, "dir", false, "прочитать все конфигурации из директории (рекурсивно)")
+	flag.BoolVar(&cfg.serverMode, "server", false, "запустить HTTP сервер")
+	flag.BoolVar(&cfg.grpcMode, "grpc", false, "запустить gRPC сервер")
+	flag.StringVar(&cfg.serverPort, "port", "8080", "порт для сервера (по умолчанию: 8080)")
 	flag.Parse()
+	return &cfg
+}
 
-	// Режим HTTP сервера
-	if serverMode {
-		server := httpserver.NewServer(serverPort)
-		if err := server.Start(); err != nil {
-			slog.Error("ошибка запуска HTTP сервера", "error", err)
-			os.Exit(1)
-		}
-		return
+func runHTTPServer(port string) error {
+	server := httpserver.NewServer(port)
+	if err := server.Start(); err != nil {
+		return fmt.Errorf("ошибка запуска HTTP сервера: %w", err)
+	}
+	return nil
+}
+
+func runGRPCServer(port string) error {
+	server := grpc.NewServer(port)
+	if err := server.Start(); err != nil {
+		return fmt.Errorf("ошибка запуска gRPC сервера: %w", err)
+	}
+	return nil
+}
+
+func runDirectoryMode(dir string, silent bool) error {
+	configs, err := parser.ParseDirectory(dir)
+	if err != nil {
+		return fmt.Errorf("ошибка парсинга директории: %w", err)
 	}
 
-	// Режим gRPC сервера
-	if grpcMode {
-		server := grpc.NewServer(serverPort)
-		if err := server.Start(); err != nil {
-			slog.Error("ошибка запуска gRPC сервера", "error", err)
-			os.Exit(1)
-		}
-		return
-	}
-
-	args := flag.Args()
-
-	// Режим директории
-	if useDirectory {
-		if len(args) == 0 {
-			slog.Error("использование: config-analyzer --dir укажите путь к директории")
-			flag.PrintDefaults()
-			os.Exit(1)
-		}
-
-		configs, err := parser.ParseDirectory(args[0])
-		if err != nil {
-			slog.Error("ошибка парсинга директории", "error", err)
-			os.Exit(1)
-		}
-
-		// Анализируем каждую конфигурацию с проверкой file permissions
-		analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
-		var allIssues []rules.Issue
-
-		for _, config := range configs {
-			issues := analyzerInstance.Analyze(config.Data)
-			allIssues = append(allIssues, issues...)
-		}
-
-		// Выводим результат
-		out := output.NewOutput(allIssues)
-		out.Print()
-
-		// Если есть проблемы и не включён silent режим, выходим с ошибкой
-		if out.HasIssues() && !silent {
-			os.Exit(1)
-		}
-		return
-	}
-
-	// Режим stdin или файл
-	var config *parser.Config
-	var err error
-
-	if useStdin {
-		config, err = parser.ParseFromStdin()
-		if err != nil {
-			slog.Error("ошибка чтения из stdin", "error", err)
-			os.Exit(1)
-		}
-	} else {
-		if len(args) == 0 {
-			slog.Error("использование: config-analyzer [--silent] [--stdin] укажите путь к файлу")
-			flag.PrintDefaults()
-			os.Exit(1)
-		}
-
-		config, err = parser.ParseFile(args[0])
-		if err != nil {
-			slog.Error("ошибка парсинга файла", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	// Создаём анализатор с проверкой file permissions для файлов
 	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
+	var allIssues []rules.Issue
 
-	// Анализируем конфиг
+	for _, config := range configs {
+		issues := analyzerInstance.Analyze(config.Data)
+		allIssues = append(allIssues, issues...)
+	}
+
+	out := output.NewOutput(allIssues)
+	out.Print()
+
+	if out.HasIssues() && !silent {
+		os.Exit(1)
+	}
+	return nil
+}
+
+func parseConfig(useStdin bool, filePath string) (*parser.Config, error) {
+	if useStdin {
+		return parser.ParseFromStdin()
+	}
+	return parser.ParseFile(filePath)
+}
+
+func runSingleConfigMode(useStdin bool, filePath string, silent bool) error {
+	config, err := parseConfig(useStdin, filePath)
+	if err != nil {
+		return err
+	}
+
+	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 	issues := analyzerInstance.Analyze(config.Data)
 
-	// Выводим результат
 	out := output.NewOutput(issues)
 	out.Print()
 
-	// Если есть проблемы и не включён silent режим, выходим с ошибкой
 	if out.HasIssues() && !silent {
+		os.Exit(1)
+	}
+	return nil
+}
+
+func validateDirectoryArgs(args []string) {
+	if len(args) != 0 {
+		return
+	}
+	slog.Error("использование: config-analyzer --dir укажите путь к директории")
+	flag.PrintDefaults()
+	os.Exit(1)
+}
+
+func validateFileArgs(args []string) {
+	if len(args) != 0 {
+		return
+	}
+	slog.Error("использование: config-analyzer [--silent] [--stdin] укажите путь к файлу")
+	flag.PrintDefaults()
+	os.Exit(1)
+}
+
+func getFilePath(args []string, useStdin bool) string {
+	if useStdin {
+		return ""
+	}
+	return args[0]
+}
+
+func runClientMode(cfg *CLIConfig, args []string) error {
+	if cfg.useDirectory {
+		validateDirectoryArgs(args)
+		return runDirectoryMode(args[0], cfg.silent)
+	}
+
+	if !cfg.useStdin {
+		validateFileArgs(args)
+	}
+	filePath := getFilePath(args, cfg.useStdin)
+
+	return runSingleConfigMode(cfg.useStdin, filePath, cfg.silent)
+}
+
+func main() {
+	cfg := parseFlags()
+
+	var err error
+	switch {
+	case cfg.serverMode:
+		err = runHTTPServer(cfg.serverPort)
+	case cfg.grpcMode:
+		err = runGRPCServer(cfg.serverPort)
+	default:
+		args := flag.Args()
+		err = runClientMode(cfg, args)
+	}
+
+	if err != nil {
+		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }

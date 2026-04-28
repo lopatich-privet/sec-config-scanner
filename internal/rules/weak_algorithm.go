@@ -5,6 +5,35 @@ import (
 	"strings"
 )
 
+var weakAlgorithms = map[string]bool{
+	"md5":  true,
+	"md4":  true,
+	"md2":  true,
+	"sha1": true,
+	"sha-1": true,
+	"des":  true,
+	"3des": true,
+	"rc4":  true,
+	"null": true,
+}
+
+var algorithmKeywords = []string{"algorithm", "algo", "cipher", "digest", "hash", "encryption"}
+
+func isWeakAlgorithm(value string) bool {
+	lowerValue := strings.ToLower(strings.TrimSpace(value))
+	return weakAlgorithms[lowerValue]
+}
+
+func containsAlgorithmKeyword(path string) bool {
+	lowerPath := strings.ToLower(path)
+	for _, keyword := range algorithmKeywords {
+		if strings.Contains(lowerPath, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
 type WeakAlgorithmRule struct{}
 
 func (r *WeakAlgorithmRule) Name() string {
@@ -14,50 +43,28 @@ func (r *WeakAlgorithmRule) Name() string {
 func (r *WeakAlgorithmRule) Check(cfg map[string]any) []Issue {
 	var issues []Issue
 
-	weakAlgorithms := map[string]bool{
-		"md5":  true,
-		"md4":  true,
-		"md2":  true,
-		"sha1": true,
-		"sha-1": true,
-		"des":  true,
-		"3des": true,
-		"rc4":  true,
-		"null": true,
-	}
-
-	algorithmKeywords := []string{"algorithm", "algo", "cipher", "digest", "hash", "encryption"}
-
 	traverseAndCheck(cfg, "", func(path string, value any) bool {
 		if value == nil {
 			return false
 		}
 
 		str, ok := value.(string)
-		if !ok {
+		if !ok || str == "" {
 			return false
 		}
 
-		if str == "" {
+		if !containsAlgorithmKeyword(path) {
 			return false
 		}
 
-		lowerPath := strings.ToLower(path)
-		lowerValue := strings.ToLower(strings.TrimSpace(str))
-
-		// Проверяем, содержит ли путь одно из ключевых слов алгоритма
-		for _, keyword := range algorithmKeywords {
-			if strings.Contains(lowerPath, keyword) {
-				if weakAlgorithms[lowerValue] {
-					issues = append(issues, Issue{
-						Severity:    HIGH,
-						Field:       path,
-						Description: fmt.Sprintf("слишком слабый алгоритм - %s", str),
-						Advice:      "Замените его на более безопасный.",
-					})
-					return true
-				}
-			}
+		if isWeakAlgorithm(str) {
+			issues = append(issues, Issue{
+				Severity:    HIGH,
+				Field:       path,
+				Description: fmt.Sprintf("слишком слабый алгоритм - %s", str),
+				Advice:      "Замените его на более безопасный.",
+			})
+			return true
 		}
 
 		return false

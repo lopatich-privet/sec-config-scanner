@@ -19,32 +19,39 @@ func (r *TLSDisabledRule) Check(cfg map[string]any) []Issue {
 			return false
 		}
 
-		lowerPath := strings.ToLower(path)
-
-		if strings.Contains(lowerPath, "insecure_skip_verify") && boolVal {
-			issues = append(issues, Issue{
-				Severity:    HIGH,
-				Field:       path,
-				Description: "TLS проверка отключена",
-				Advice:      "Включите TLS в продакшн-окружении.",
-			})
-			return true
+		issue := r.checkTLSConfig(path, boolVal)
+		if issue == nil {
+			return false
 		}
 
-		if strings.Contains(lowerPath, "enabled") && !boolVal {
-			issues = append(issues, Issue{
-				Severity:    HIGH,
-				Field:       path,
-				Description: "TLS отключён",
-				Advice:      "Включите TLS в продакшн-окружении.",
-			})
-			return true
-		}
-
-		return false
+		issue.Field = path
+		issues = append(issues, *issue)
+		return true
 	})
 
 	return issues
+}
+
+func (r *TLSDisabledRule) checkTLSConfig(path string, enabled bool) *Issue {
+	lowerPath := strings.ToLower(path)
+
+	if strings.Contains(lowerPath, "insecure_skip_verify") && enabled {
+		return &Issue{
+			Severity:    HIGH,
+			Description: "TLS проверка отключена",
+			Advice:      "Включите TLS в продакшн-окружении.",
+		}
+	}
+
+	if strings.Contains(lowerPath, "enabled") && !enabled {
+		return &Issue{
+			Severity:    HIGH,
+			Description: "TLS отключён",
+			Advice:      "Включите TLS в продакшн-окружении.",
+		}
+	}
+
+	return nil
 }
 
 func NewTLSDisabledRule() Rule {
