@@ -1,12 +1,13 @@
 package analyzer
 
 import (
-	"config-analyzer/internal/rules"
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
 type Analyzer struct {
 	rules []rules.Rule
 }
+
 func NewAnalyzer(rulesList []rules.Rule) *Analyzer {
 	return &Analyzer{
 		rules: rulesList,

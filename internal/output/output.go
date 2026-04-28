@@ -1,9 +1,10 @@
 package output
 
 import (
-	"config-analyzer/internal/rules"
 	"fmt"
 	"sort"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
 type Format string

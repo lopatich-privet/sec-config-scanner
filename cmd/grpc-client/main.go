@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	gen "config-analyzer/api/gen"
+	gen "github.com/lopatich-privet/sec-config-scanner/api/gen"
 )
 
 const (

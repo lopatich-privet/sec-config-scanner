@@ -1,9 +1,6 @@
 package grpc
 
 import (
-	"config-analyzer/api/gen"
-	"config-analyzer/internal/analyzer"
-	"config-analyzer/internal/rules"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,6 +9,10 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/lopatich-privet/sec-config-scanner/api/gen"
+	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 
 	"google.golang.org/grpc"
 	"gopkg.in/yaml.v3"

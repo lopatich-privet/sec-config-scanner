@@ -1,8 +1,9 @@
 package analyzer
 
 import (
-	"config-analyzer/internal/rules"
 	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
 func TestNewAnalyzer(t *testing.T) {
@@ -60,7 +61,7 @@ func TestAnalyze(t *testing.T) {
 		{
 			name: "multiple rules, multiple issues",
 			cfg: map[string]any{
-				"log":     map[string]any{"level": "debug"},
+				"log":    map[string]any{"level": "debug"},
 				"server": map[string]any{"host": "0.0.0.0"},
 			},
 			rulesList: []rules.Rule{
@@ -72,7 +73,7 @@ func TestAnalyze(t *testing.T) {
 		{
 			name: "all rules, multiple issues",
 			cfg: map[string]any{
-				"log":     map[string]any{"level": "debug"},
+				"log":    map[string]any{"level": "debug"},
 				"server": map[string]any{"host": "0.0.0.0"},
 				"tls":    map[string]any{"enabled": false},
 				"db":     map[string]any{"password": "secret"},

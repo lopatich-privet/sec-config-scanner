@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package analyzer;
 
-option go_package = "config-analyzer/api/gen";
+option go_package = "github.com/lopatich-privet/sec-config-scanner/api/gen";
 
 service AnalyzerService {
   rpc Analyze(AnalyzeRequest) returns (AnalyzeResponse);

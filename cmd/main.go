@@ -1,15 +1,16 @@
 package main
 
 import (
-	"config-analyzer/internal/analyzer"
-	"config-analyzer/internal/output"
-	"config-analyzer/internal/parser"
-	"config-analyzer/internal/rules"
-	"config-analyzer/server/grpc"
-	httpserver "config-analyzer/server/http"
 	"fmt"
 	"log/slog"
 	"os"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
+	"github.com/lopatich-privet/sec-config-scanner/internal/output"
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
+	"github.com/lopatich-privet/sec-config-scanner/server/grpc"
+	httpserver "github.com/lopatich-privet/sec-config-scanner/server/http"
 
 	flag "github.com/spf13/pflag"
 )

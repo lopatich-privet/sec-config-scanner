@@ -1,8 +1,6 @@
 package http
 
 import (
-	"config-analyzer/internal/analyzer"
-	"config-analyzer/internal/rules"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,6 +12,9 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 
 	"gopkg.in/yaml.v3"
 )

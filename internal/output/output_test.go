@@ -1,8 +1,9 @@
 package output
 
 import (
-	"config-analyzer/internal/rules"
 	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
 func TestNewOutput(t *testing.T) {
@@ -47,9 +48,9 @@ func TestOutput_GetIssues(t *testing.T) {
 
 func TestOutput_HasIssues(t *testing.T) {
 	tests := []struct {
-		name       string
-		issues     []rules.Issue
-		wantHas    bool
+		name    string
+		issues  []rules.Issue
+		wantHas bool
 	}{
 		{
 			name:    "has issues",
