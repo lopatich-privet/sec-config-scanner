@@ -1,4 +1,4 @@
-module config-analyzer
+module github.com/lopatich-privet/sec-config-scanner
 
 go 1.24.0
 
