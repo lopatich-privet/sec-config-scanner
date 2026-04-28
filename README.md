@@ -9,12 +9,6 @@
 
 ## Установка
 
-### С помощью Go (рекомендуется)
-
-```bash
-go install github.com/lopatich-privet/sec-config-scanner@latest
-```
-
 ### Сборка из исходников
 
 ```bash

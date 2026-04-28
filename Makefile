@@ -1,4 +1,4 @@
-.PHONY: build test lint docker run proto clean
+.PHONY: build test lint docker run proto clean gen-proto
 
 BINARY=config-analyzer
 IMAGE=config-analyzer
@@ -28,10 +28,12 @@ run-server: build
 run-grpc: build
 	./$(BINARY) --grpc --port $(PORT)
 
-proto:
-	protoc --go_out=. --go_opt=module=config-analyzer \
-		--go-grpc_out=. --go-grpc_opt=module=config-analyzer \
+gen-proto:
+	protoc --go_out=. --go_opt=module=github.com/lopatich-privet/sec-config-scanner \
+		--go-grpc_out=. --go-grpc_opt=module=github.com/lopatich-privet/sec-config-scanner \
 		api/analyzer.proto
+
+proto: gen-proto
 
 tidy:
 	go mod tidy
