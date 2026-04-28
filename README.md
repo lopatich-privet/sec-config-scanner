@@ -2,10 +2,10 @@
 
 Анализатор конфигурационных файлов (JSON/YAML) на предмет уязвимостей и проблем безопасности.
 
-[Go Report Card](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
-[Go Version](https://go.dev/)
-[License: MIT](https://opensource.org/licenses/MIT)
-[golangci-lint](https://golangci-lint.run)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lopatich-privet/sec-config-scanner)](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
+[![Go Version](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![golangci-lint](https://img.shields.io/badge/golangci--linted-success)](https://golangci-lint.run)
 
 ## Установка
 
@@ -134,28 +134,6 @@ go run ./cmd/grpc-client/main.go
 
 # Запуск gRPC клиента (с использованием клиентского режима)
 cd cmd/grpc-client && go run main.go
-```
-
-## Демонстрация работы
-
-### CLI режим
-
-CLI - Анализ конфигурации с уязвимостями
-
-**Анализ файла с проблемами:**
-
-```bash
-./config-analyzer testdata/bad.json
-```
-
-**Результат:**
-
-```
-HIGH: пароль в открытом виде. Используйте переменные окружения или vault для хранения секретов.
-HIGH: TLS проверка отключена. Включите TLS в продакшн-окружении.
-HIGH: слишком слабый алгоритм - RC4. Замените его на более безопасный.
-MEDIUM: сервис слушает на 0.0.0.0 без ограничений. Ограничьте bind конкретным интерфейсом или внутренним IP.
-LOW: логирование в debug-режиме. Поменяйте режим на более избирательный (info+).
 ```
 
 ---
@@ -411,9 +389,8 @@ curl -X POST http://localhost:8080/analyze -d 'data:\r\n  log:\r\n    level: deb
 
 ```powershell
 $body = @"
-data:
-  log:
-    level: debug
+log:
+  level: debug
   password: secret123
 "@
 
