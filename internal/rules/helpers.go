@@ -1,23 +1,34 @@
 package rules
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
-func traverseAndCheck(cfg map[string]any, path string, checker func(path string, value any) bool) {
-	for key, value := range cfg {
-		currentPath := key
-		if path != "" {
-			currentPath = path + "." + key
+func traverseAndCheck(node any, path string, checker func(path string, value any) bool) {
+	switch v := node.(type) {
+	case map[string]any:
+		for k, val := range v {
+			traverseAndCheck(val, joinPath(path, k), checker)
 		}
-
-		switch v := value.(type) {
-		case map[string]any:
-			traverseAndCheck(v, currentPath, checker)
-		default:
-			if checker(currentPath, value) {
-				continue
-			}
+	case map[any]any:
+		for k, val := range v {
+			traverseAndCheck(val, joinPath(path, fmt.Sprintf("%v", k)), checker)
 		}
+	case []any:
+		for i, item := range v {
+			traverseAndCheck(item, fmt.Sprintf("%s[%d]", path, i), checker)
+		}
+	default:
+		checker(path, node)
 	}
+}
+
+func joinPath(parent, key string) string {
+	if parent == "" {
+		return key
+	}
+	return parent + "." + key
 }
 
 func findKeyWithPath(cfg map[string]any, keys []string) (any, string) {
@@ -29,10 +40,10 @@ func findKeyWithPath(cfg map[string]any, keys []string) (any, string) {
 	var path strings.Builder
 
 	for i, key := range keys {
-		path.WriteString(key)
-		if i < len(keys)-1 {
+		if i > 0 {
 			path.WriteString(".")
 		}
+		path.WriteString(key)
 
 		val, ok := current[key]
 		if !ok {
@@ -43,13 +54,34 @@ func findKeyWithPath(cfg map[string]any, keys []string) (any, string) {
 			return val, path.String()
 		}
 
-		next, ok := val.(map[string]any)
-		if !ok {
-			return nil, path.String()
+		if m, ok := val.(map[string]any); ok {
+			current = m
+			continue
 		}
 
-		current = next
+		return trySearchInArray(val, keys[i+1:], path.String())
 	}
 
 	return nil, path.String()
+}
+
+func trySearchInArray(val any, remainingKeys []string, basePath string) (any, string) {
+	arr, ok := val.([]any)
+	if !ok {
+		return nil, basePath
+	}
+
+	for _, item := range arr {
+		m, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+
+		result, p := findKeyWithPath(m, remainingKeys)
+		if result != nil {
+			return result, basePath + "." + p
+		}
+	}
+
+	return nil, basePath
 }
