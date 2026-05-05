@@ -16,6 +16,8 @@ import (
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,7 +67,7 @@ func (s *Server) Start() error {
 
 func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.AnalyzeResponse, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, fmt.Errorf("request canceled: %w", err)
+		return nil, status.Error(codes.Canceled, "request canceled")
 	}
 
 	var config map[string]any
@@ -73,11 +75,11 @@ func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.Ana
 	switch req.Format {
 	case "yaml", "yml":
 		if err := yaml.Unmarshal(req.Data, &config); err != nil {
-			return nil, fmt.Errorf("failed to parse YAML: %w", err)
+			return nil, status.Errorf(codes.InvalidArgument, "failed to parse YAML: %v", err)
 		}
 	default:
 		if err := json.Unmarshal(req.Data, &config); err != nil {
-			return nil, fmt.Errorf("failed to parse JSON: %w", err)
+			return nil, status.Errorf(codes.InvalidArgument, "failed to parse JSON: %v", err)
 		}
 	}
 
@@ -94,7 +96,6 @@ func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.Ana
 	}
 
 	return &gen.AnalyzeResponse{
-		Success: len(issues) == 0,
-		Issues:  pbIssues,
+		Issues: pbIssues,
 	}, nil
 }

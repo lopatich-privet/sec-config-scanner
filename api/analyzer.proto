@@ -21,6 +21,5 @@ message Issue {
 }
 
 message AnalyzeResponse {
-  bool success = 1;
-  repeated Issue issues = 2;
+  repeated Issue issues = 1;
 }

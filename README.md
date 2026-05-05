@@ -136,6 +136,43 @@ go run ./cmd/grpc-client/main.go
 cd cmd/grpc-client && go run main.go
 ```
 
+### gRPC Status Codes
+
+Сервер возвращает стандартные gRPC status-коды:
+
+| Status Code | Описание                            |
+| ----------- | ----------------------------------- |
+| `OK`        | Анализ выполнен успешно             |
+| `InvalidArgument` | Ошибка парсинга JSON/YAML      |
+| `Canceled`  | Запрос отменён клиентом             |
+| `Internal`  | Внутренняя ошибка сервера          |
+
+### Пример обработки ошибок на клиенте (Go)
+
+```go
+resp, err := client.Analyze(ctx, req)
+if err != nil {
+    st, ok := status.FromError(err)
+    if !ok {
+        log.Fatalf("unknown error: %v", err)
+    }
+    switch st.Code() {
+    case codes.InvalidArgument:
+        log.Printf("Invalid request: %s", st.Message())
+    case codes.Internal:
+        log.Printf("Server error: %s", st.Message())
+    case codes.Canceled:
+        log.Printf("Request canceled")
+    default:
+        log.Printf("Unexpected error: %s", st.Message())
+    }
+    return
+}
+
+// Обработка успешного ответа
+log.Printf("Analysis completed, found %d issues", len(resp.Issues))
+```
+
 ---
 
 ## Правила анализа

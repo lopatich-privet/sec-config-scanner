@@ -7,6 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	gen "github.com/lopatich-privet/sec-config-scanner/api/gen"
 )
@@ -44,11 +45,16 @@ func runTestFile(client gen.AnalyzerServiceClient, filename, format string) {
 		Data:   data,
 	})
 	if err != nil {
-		log.Printf("Analyze %s failed: %v", filename, err)
+		st, ok := status.FromError(err)
+		if !ok {
+			log.Printf("Analyze %s failed: %v", filename, err)
+			return
+		}
+		log.Printf("Analyze %s failed - Code: %s, Message: %s", filename, st.Code(), st.Message())
 		return
 	}
 
-	log.Printf("%s - Success: %v, Issues found: %d\n", filename, resp.Success, len(resp.Issues))
+	log.Printf("%s - Status: OK, Issues found: %d\n", filename, len(resp.Issues))
 	for _, issue := range resp.Issues {
 		log.Printf("  - %s: %s", issue.Severity, issue.Description)
 	}

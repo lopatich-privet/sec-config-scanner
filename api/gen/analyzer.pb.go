@@ -143,8 +143,7 @@ func (x *Issue) GetAdvice() string {
 
 type AnalyzeResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
-	Issues        []*Issue               `protobuf:"bytes,2,rep,name=issues,proto3" json:"issues,omitempty"`
+	Issues        []*Issue               `protobuf:"bytes,1,rep,name=issues,proto3" json:"issues,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -179,13 +178,6 @@ func (*AnalyzeResponse) Descriptor() ([]byte, []int) {
 	return file_api_analyzer_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *AnalyzeResponse) GetSuccess() bool {
-	if x != nil {
-		return x.Success
-	}
-	return false
-}
-
 func (x *AnalyzeResponse) GetIssues() []*Issue {
 	if x != nil {
 		return x.Issues
@@ -205,10 +197,9 @@ const file_api_analyzer_proto_rawDesc = "" +
 	"\bseverity\x18\x01 \x01(\tR\bseverity\x12\x14\n" +
 	"\x05field\x18\x02 \x01(\tR\x05field\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x16\n" +
-	"\x06advice\x18\x04 \x01(\tR\x06advice\"T\n" +
-	"\x0fAnalyzeResponse\x12\x18\n" +
-	"\asuccess\x18\x01 \x01(\bR\asuccess\x12'\n" +
-	"\x06issues\x18\x02 \x03(\v2\x0f.analyzer.IssueR\x06issues2Q\n" +
+	"\x06advice\x18\x04 \x01(\tR\x06advice\":\n" +
+	"\x0fAnalyzeResponse\x12'\n" +
+	"\x06issues\x18\x01 \x03(\v2\x0f.analyzer.IssueR\x06issues2Q\n" +
 	"\x0fAnalyzerService\x12>\n" +
 	"\aAnalyze\x12\x18.analyzer.AnalyzeRequest\x1a\x19.analyzer.AnalyzeResponseB7Z5github.com/lopatich-privet/sec-config-scanner/api/genb\x06proto3"
 
