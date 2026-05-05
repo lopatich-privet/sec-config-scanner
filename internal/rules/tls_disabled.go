@@ -4,6 +4,8 @@ import (
 	"strings"
 )
 
+const enableTLSAdvice = "Включите TLS в продакшн-окружении."
+
 type TLSDisabledRule struct{}
 
 func (r *TLSDisabledRule) Name() string {
@@ -32,6 +34,17 @@ func (r *TLSDisabledRule) Check(cfg map[string]any) []Issue {
 	return issues
 }
 
+func (r *TLSDisabledRule) hasTLSContext(path string) bool {
+	tlsContextKeywords := []string{"tls", "ssl", "https", "secure"}
+	lowerPath := strings.ToLower(path)
+	for _, kw := range tlsContextKeywords {
+		if strings.Contains(lowerPath, kw) {
+			return true
+		}
+	}
+	return false
+}
+
 func (r *TLSDisabledRule) checkTLSConfig(path string, enabled bool) *Issue {
 	lowerPath := strings.ToLower(path)
 
@@ -39,15 +52,15 @@ func (r *TLSDisabledRule) checkTLSConfig(path string, enabled bool) *Issue {
 		return &Issue{
 			Severity:    HIGH,
 			Description: "TLS проверка отключена",
-			Advice:      "Включите TLS в продакшн-окружении.",
+			Advice:      enableTLSAdvice,
 		}
 	}
 
-	if strings.Contains(lowerPath, "enabled") && !enabled {
+	if strings.Contains(lowerPath, "enabled") && !enabled && r.hasTLSContext(path) {
 		return &Issue{
 			Severity:    HIGH,
 			Description: "TLS отключён",
-			Advice:      "Включите TLS в продакшн-окружении.",
+			Advice:      enableTLSAdvice,
 		}
 	}
 

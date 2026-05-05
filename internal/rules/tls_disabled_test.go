@@ -97,14 +97,22 @@ func TestTLSDisabledRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name: "cache.enabled: false - issue (false positive, expected behavior)",
+			name: "cache.enabled: false - no issue (no TLS context)",
 			cfg: map[string]any{
 				"cache": map[string]any{
 					"enabled": false,
 				},
 			},
-			wantIssues: 1,
-			wantFields: []string{"cache.enabled"},
+			wantIssues: 0,
+		},
+		{
+			name: "feature.enabled: false - no issue (no TLS context)",
+			cfg: map[string]any{
+				"feature": map[string]any{
+					"enabled": false,
+				},
+			},
+			wantIssues: 0,
 		},
 		{
 			name: "multiple issues",
