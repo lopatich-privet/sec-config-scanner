@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -19,15 +18,19 @@ import (
 	"github.com/lopatich-privet/sec-config-scanner/internal/service"
 )
 
+const maxBodySize = 10 << 20 // 10 MB
+
+const (
+	errMethodNotAllowed   = "method not allowed"
+	errBodyEmpty          = "request body is empty"
+	errContentTypeMissing = "Content-Type header is required"
+)
+
 type Server struct {
 	service service.ConfigAnalyzer
 	port    string
 	server  *http.Server
 	logger  *slog.Logger
-}
-
-type AnalyzeRequest struct {
-	Data json.RawMessage `json:"data"`
 }
 
 type IssueResponse struct {
@@ -101,21 +104,49 @@ func (s *Server) Start() error {
 
 func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		s.writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		s.writeJSONError(w, http.StatusMethodNotAllowed, errMethodNotAllowed)
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 10<<20))
+	// Fail-fast: empty Content-Length
+	if r.ContentLength == 0 {
+		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
+		return
+	}
+
+	// Content-Type validation
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "" {
+		s.writeJSONError(w, http.StatusBadRequest, errContentTypeMissing)
+		return
+	}
+
+	format, ok := parser.FormatFromContentType(contentType)
+	if !ok {
+		s.writeJSONError(w, http.StatusUnsupportedMediaType,
+			fmt.Sprintf("unsupported Content-Type: %q", contentType))
+		return
+	}
+
+	// Read body with MaxBytesReader (closes connection on limit exceeded)
+	reader := http.MaxBytesReader(w, r.Body, maxBodySize)
+	body, err := io.ReadAll(reader)
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			s.writeJSONError(w, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("request body exceeds %d bytes limit", maxBodySize))
+			return
+		}
 		s.writeJSONError(w, http.StatusBadRequest, "failed to read request body")
 		return
 	}
 	defer r.Body.Close()
 
-	format := parser.FormatJSON
-	contentType := r.Header.Get("Content-Type")
-	if strings.Contains(contentType, "yaml") || strings.Contains(contentType, "yml") {
-		format = parser.FormatYAML
+	// Defense against lying Content-Length
+	if len(body) == 0 {
+		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
+		return
 	}
 
 	issues, err := s.service.Analyze(r.Context(), body, format)
@@ -142,7 +173,7 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		s.writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
+		s.writeJSONError(w, http.StatusMethodNotAllowed, errMethodNotAllowed)
 		return
 	}
 	s.writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

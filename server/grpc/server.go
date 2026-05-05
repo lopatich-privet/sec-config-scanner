@@ -71,7 +71,16 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.AnalyzeResponse, error) {
-	issues, err := s.service.Analyze(ctx, req.Data, parser.Format(req.Format))
+	if len(req.Data) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "data is required")
+	}
+
+	format, ok := parser.FormatFromString(req.Format)
+	if !ok {
+		return nil, status.Errorf(codes.InvalidArgument, "unsupported format: %q", req.Format)
+	}
+
+	issues, err := s.service.Analyze(ctx, req.Data, format)
 	if err != nil {
 		return nil, status.Errorf(mapToGRPCCode(err), "%v", err)
 	}
