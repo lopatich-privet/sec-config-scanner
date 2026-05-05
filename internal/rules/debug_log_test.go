@@ -65,6 +65,18 @@ func TestDebugLogRule_Check(t *testing.T) {
 			wantIssues: 0,
 			wantFields: nil,
 		},
+		{
+			name:       "logging.level - debug",
+			cfg:        map[string]any{"logging": map[string]any{"level": "debug"}},
+			wantIssues: 1,
+			wantFields: []string{"logging.level"},
+		},
+		{
+			name:       "app.log.level - debug",
+			cfg:        map[string]any{"app": map[string]any{"log": map[string]any{"level": "debug"}}},
+			wantIssues: 1,
+			wantFields: []string{"app.log.level"},
+		},
 	}
 
 	for _, tt := range tests {
