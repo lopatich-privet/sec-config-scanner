@@ -1,6 +1,10 @@
 package rules
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
 
 type Severity string
 
@@ -23,5 +27,5 @@ func (i Issue) String() string {
 
 type Rule interface {
 	Name() string
-	Check(cfg map[string]any) []Issue
+	Check(cfg *parser.Config) []Issue
 }

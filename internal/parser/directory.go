@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,7 +27,7 @@ func ParseDirectory(dir string) ([]*Config, error) {
 
 		config, err := ParseFile(path)
 		if err != nil {
-			fmt.Printf("warning: failed to parse %s: %v\n", path, err)
+			slog.Warn("failed to parse file", "path", path, "error", err)
 			return nil
 		}
 

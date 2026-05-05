@@ -1,15 +1,19 @@
 package rules
 
+import (
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
+
 type BindAllRule struct{}
 
 func (r *BindAllRule) Name() string {
 	return "bind_all"
 }
 
-func (r *BindAllRule) Check(cfg map[string]any) []Issue {
+func (r *BindAllRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 
-	traverseAndCheck(cfg, "", func(path string, value any) bool {
+	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
 		if value == nil {
 			return false
 		}

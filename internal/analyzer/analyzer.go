@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
@@ -14,7 +15,7 @@ func NewAnalyzer(rulesList []rules.Rule) *Analyzer {
 	}
 }
 
-func (a *Analyzer) Analyze(cfg map[string]any) []rules.Issue {
+func (a *Analyzer) Analyze(cfg *parser.Config) []rules.Issue {
 	var issues []rules.Issue
 
 	for _, rule := range a.rules {

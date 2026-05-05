@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
 
 func TestDebugLogRule_Check(t *testing.T) {
 	rule := NewDebugLogRule()
@@ -81,7 +85,7 @@ func TestDebugLogRule_Check(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Check() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}
@@ -109,7 +113,7 @@ func TestDebugLogRule_Name(t *testing.T) {
 func TestDebugLogRule_Severity(t *testing.T) {
 	rule := NewDebugLogRule()
 	cfg := map[string]any{"log": map[string]any{"level": "debug"}}
-	issues := rule.Check(cfg)
+	issues := rule.Check(&parser.Config{Data: cfg})
 	if len(issues) != 1 {
 		t.Fatalf("Expected 1 issue, got %d", len(issues))
 	}

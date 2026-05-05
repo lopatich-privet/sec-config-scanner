@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
 
 func TestTLSDisabledRule_Check(t *testing.T) {
 	rule := NewTLSDisabledRule()
@@ -128,7 +132,7 @@ func TestTLSDisabledRule_Check(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Check() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}
@@ -179,7 +183,7 @@ func TestTLSDisabledRule_Severity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Fatalf("Expected %d issue(s), got %d", tt.wantIssues, len(issues))
 			}
@@ -216,7 +220,7 @@ func TestTLSDisabledRule_CaseInsensitive(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Check() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}

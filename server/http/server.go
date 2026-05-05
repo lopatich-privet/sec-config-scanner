@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 
 	"gopkg.in/yaml.v3"
@@ -124,7 +125,7 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	issues := s.analyzer.Analyze(config)
+	issues := s.analyzer.Analyze(&parser.Config{Data: config})
 
 	response := AnalyzeResponse{
 		Success: len(issues) == 0,

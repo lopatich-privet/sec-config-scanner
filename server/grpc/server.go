@@ -12,6 +12,7 @@ import (
 
 	"github.com/lopatich-privet/sec-config-scanner/api/gen"
 	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 
 	"google.golang.org/grpc"
@@ -80,7 +81,7 @@ func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.Ana
 		}
 	}
 
-	issues := s.analyzer.Analyze(config)
+	issues := s.analyzer.Analyze(&parser.Config{Data: config})
 
 	pbIssues := make([]*gen.Issue, len(issues))
 	for i, issue := range issues {

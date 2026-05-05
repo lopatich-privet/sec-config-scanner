@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
 
 func TestBindAllRule_Check(t *testing.T) {
 	rule := NewBindAllRule()
@@ -32,7 +36,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantFields: []string{"network.bind"},
 		},
 		{
-			name:       "bind to 127.0.0.1 - no issue",
+			name: "bind to 127.0.0.1 - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": "127.0.0.1",
@@ -41,7 +45,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name:       "bind to localhost - no issue",
+			name: "bind to localhost - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": "localhost",
@@ -50,7 +54,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name:       "bind to 192.168.1.1 - no issue",
+			name: "bind to 192.168.1.1 - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": "192.168.1.1",
@@ -59,7 +63,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name:       "empty string - no issue",
+			name: "empty string - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": "",
@@ -79,7 +83,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantFields: []string{"server.host2"},
 		},
 		{
-			name:       "non-string value - no issue",
+			name: "non-string value - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": 8080,
@@ -88,7 +92,7 @@ func TestBindAllRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name:       "nil value - no issue",
+			name: "nil value - no issue",
 			cfg: map[string]any{
 				"server": map[string]any{
 					"host": nil,
@@ -105,7 +109,7 @@ func TestBindAllRule_Check(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Check() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}
@@ -133,7 +137,7 @@ func TestBindAllRule_Name(t *testing.T) {
 func TestBindAllRule_Severity(t *testing.T) {
 	rule := NewBindAllRule()
 	cfg := map[string]any{"host": "0.0.0.0"}
-	issues := rule.Check(cfg)
+	issues := rule.Check(&parser.Config{Data: cfg})
 	if len(issues) != 1 {
 		t.Fatalf("Expected 1 issue, got %d", len(issues))
 	}
@@ -145,7 +149,7 @@ func TestBindAllRule_Severity(t *testing.T) {
 func TestBindAllRule_IssueDetails(t *testing.T) {
 	rule := NewBindAllRule()
 	cfg := map[string]any{"host": "0.0.0.0"}
-	issues := rule.Check(cfg)
+	issues := rule.Check(&parser.Config{Data: cfg})
 	if len(issues) != 1 {
 		t.Fatalf("Expected 1 issue, got %d", len(issues))
 	}

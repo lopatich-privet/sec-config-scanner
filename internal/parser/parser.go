@@ -19,7 +19,8 @@ const (
 )
 
 type Config struct {
-	Data map[string]any
+	Data     map[string]any
+	FilePath string
 }
 
 func ParseFile(path string) (*Config, error) {
@@ -40,7 +41,13 @@ func ParseFile(path string) (*Config, error) {
 		return nil, fmt.Errorf("unsupported file format: %s", ext)
 	}
 
-	return Parse(data, format)
+	result, err := Parse(data, format)
+	if err != nil {
+		return nil, err
+	}
+
+	result.FilePath = path
+	return result, nil
 }
 
 func Parse(data []byte, format Format) (*Config, error) {

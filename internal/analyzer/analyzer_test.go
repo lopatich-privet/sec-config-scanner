@@ -3,6 +3,7 @@ package analyzer
 import (
 	"testing"
 
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 )
 
@@ -18,7 +19,7 @@ func TestNewAnalyzer(t *testing.T) {
 		t.Fatal("NewAnalyzer() returned nil")
 	}
 
-	issues := analyzer.Analyze(map[string]any{"log": map[string]any{"level": "debug"}})
+	issues := analyzer.Analyze(&parser.Config{Data: map[string]any{"log": map[string]any{"level": "debug"}}})
 	if len(issues) != 1 {
 		t.Errorf("Expected 1 issue for config with debug log, got %d", len(issues))
 	}
@@ -108,7 +109,7 @@ func TestAnalyze(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			analyzer := NewAnalyzer(tt.rulesList)
-			issues := analyzer.Analyze(tt.cfg)
+			issues := analyzer.Analyze(&parser.Config{Data: tt.cfg})
 
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Analyze() returned %d issues, want %d", len(issues), tt.wantIssues)
@@ -132,7 +133,7 @@ func TestAnalyze_IssueAggregation(t *testing.T) {
 		},
 	}
 
-	issues := analyzer.Analyze(cfg)
+	issues := analyzer.Analyze(&parser.Config{Data: cfg})
 
 	if len(issues) != 2 {
 		t.Fatalf("Expected 2 issues, got %d", len(issues))
@@ -163,7 +164,7 @@ func TestAnalyze_NilSafety(t *testing.T) {
 	rule := rules.NewDebugLogRule()
 	analyzer := NewAnalyzer([]rules.Rule{rule})
 
-	issues := analyzer.Analyze(nil)
+	issues := analyzer.Analyze(&parser.Config{Data: nil})
 
 	if len(issues) != 0 {
 		t.Errorf("Expected 0 issues for nil config, got %d", len(issues))

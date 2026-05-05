@@ -2,6 +2,8 @@ package rules
 
 import (
 	"strings"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 )
 
 const enableTLSAdvice = "Включите TLS в продакшн-окружении."
@@ -12,10 +14,10 @@ func (r *TLSDisabledRule) Name() string {
 	return "tls_disabled"
 }
 
-func (r *TLSDisabledRule) Check(cfg map[string]any) []Issue {
+func (r *TLSDisabledRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 
-	traverseAndCheck(cfg, "", func(path string, value any) bool {
+	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
 		boolVal, ok := value.(bool)
 		if !ok {
 			return false

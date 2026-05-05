@@ -75,9 +75,16 @@ func runDirectoryMode(dir string, silent bool) error {
 	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 	var allIssues []rules.Issue
 
+	fpRule := rules.NewFilePermissionRule().(*rules.FilePermissionRule)
+
 	for _, config := range configs {
-		issues := analyzerInstance.Analyze(config.Data)
+		issues := analyzerInstance.Analyze(config)
 		allIssues = append(allIssues, issues...)
+
+		if config.FilePath != "" {
+			fileIssues := fpRule.CheckFilePermissions(config.FilePath)
+			allIssues = append(allIssues, fileIssues...)
+		}
 	}
 
 	out := output.NewOutput(allIssues)
@@ -103,7 +110,13 @@ func runSingleConfigMode(useStdin bool, filePath string, silent bool) error {
 	}
 
 	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
-	issues := analyzerInstance.Analyze(config.Data)
+	issues := analyzerInstance.Analyze(config)
+
+	if config.FilePath != "" {
+		fpRule := rules.NewFilePermissionRule().(*rules.FilePermissionRule)
+		fileIssues := fpRule.CheckFilePermissions(config.FilePath)
+		issues = append(issues, fileIssues...)
+	}
 
 	out := output.NewOutput(issues)
 	out.Print()

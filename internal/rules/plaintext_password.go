@@ -2,6 +2,8 @@ package rules
 
 import (
 	"strings"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 )
 
 type PlaintextPasswordRule struct{}
@@ -10,11 +12,11 @@ func (r *PlaintextPasswordRule) Name() string {
 	return "plaintext_password"
 }
 
-func (r *PlaintextPasswordRule) Check(cfg map[string]any) []Issue {
+func (r *PlaintextPasswordRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 	passwordKeywords := []string{"password", "passwd", "pwd", "secret"}
 
-	traverseAndCheck(cfg, "", func(path string, value any) bool {
+	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
 		if issue := checkPlaintextPassword(path, value, passwordKeywords); issue != nil {
 			issues = append(issues, *issue)
 			return true

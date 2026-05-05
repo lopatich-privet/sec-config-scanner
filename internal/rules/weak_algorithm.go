@@ -3,6 +3,8 @@ package rules
 import (
 	"fmt"
 	"strings"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 )
 
 var weakAlgorithms = map[string]bool{
@@ -40,10 +42,10 @@ func (r *WeakAlgorithmRule) Name() string {
 	return "weak_algorithm"
 }
 
-func (r *WeakAlgorithmRule) Check(cfg map[string]any) []Issue {
+func (r *WeakAlgorithmRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 
-	traverseAndCheck(cfg, "", func(path string, value any) bool {
+	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
 		if value == nil {
 			return false
 		}

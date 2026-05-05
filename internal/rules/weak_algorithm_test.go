@@ -1,6 +1,10 @@
 package rules
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
+)
 
 func TestWeakAlgorithmRule_Check(t *testing.T) {
 	rule := NewWeakAlgorithmRule()
@@ -109,7 +113,7 @@ func TestWeakAlgorithmRule_Check(t *testing.T) {
 			wantIssues: 0,
 		},
 		{
-			name:       "empty string - no issue",
+			name: "empty string - no issue",
 			cfg: map[string]any{
 				"crypto": map[string]any{
 					"algorithm": "",
@@ -172,7 +176,7 @@ func TestWeakAlgorithmRule_Check(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			issues := rule.Check(tt.cfg)
+			issues := rule.Check(&parser.Config{Data: tt.cfg})
 			if len(issues) != tt.wantIssues {
 				t.Errorf("Check() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}
@@ -200,7 +204,7 @@ func TestWeakAlgorithmRule_Name(t *testing.T) {
 func TestWeakAlgorithmRule_Severity(t *testing.T) {
 	rule := NewWeakAlgorithmRule()
 	cfg := map[string]any{"crypto": map[string]any{"algorithm": "md5"}}
-	issues := rule.Check(cfg)
+	issues := rule.Check(&parser.Config{Data: cfg})
 	if len(issues) != 1 {
 		t.Fatalf("Expected 1 issue, got %d", len(issues))
 	}
@@ -220,7 +224,7 @@ func TestWeakAlgorithmRule_AllWeakAlgorithms(t *testing.T) {
 					"algorithm": algo,
 				},
 			}
-			issues := rule.Check(cfg)
+			issues := rule.Check(&parser.Config{Data: cfg})
 			if len(issues) != 1 {
 				t.Errorf("Algorithm %s: expected 1 issue, got %d", algo, len(issues))
 			}
@@ -239,7 +243,7 @@ func TestWeakAlgorithmRule_AllKeywords(t *testing.T) {
 					keyword: "md5",
 				},
 			}
-			issues := rule.Check(cfg)
+			issues := rule.Check(&parser.Config{Data: cfg})
 			if len(issues) != 1 {
 				t.Errorf("Keyword %s: expected 1 issue, got %d", keyword, len(issues))
 			}

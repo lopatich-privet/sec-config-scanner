@@ -2,6 +2,8 @@ package rules
 
 import (
 	"strings"
+
+	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 )
 
 type DebugLogRule struct{}
@@ -10,10 +12,10 @@ func (r *DebugLogRule) Name() string {
 	return "debug_log"
 }
 
-func (r *DebugLogRule) Check(cfg map[string]any) []Issue {
+func (r *DebugLogRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 
-	traverseAndCheck(cfg, "", func(path string, value any) bool {
+	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
 		str, ok := value.(string)
 		if !ok || strings.ToLower(str) != "debug" {
 			return false
