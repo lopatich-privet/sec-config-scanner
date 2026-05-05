@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
 	"github.com/lopatich-privet/sec-config-scanner/internal/output"
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
@@ -22,6 +23,14 @@ type CLIConfig struct {
 	serverMode   bool
 	grpcMode     bool
 	serverPort   string
+	grpcPort     string
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func init() {
@@ -32,7 +41,7 @@ func init() {
 		fmt.Fprintf(os.Stderr, "  config-analyzer [флаги] --dir <путь_к_директории>\n")
 		fmt.Fprintf(os.Stderr, "  config-analyzer [флаги] --stdin\n")
 		fmt.Fprintf(os.Stderr, "  config-analyzer --server [--port <порт>]\n")
-		fmt.Fprintf(os.Stderr, "  config-analyzer --grpc [--port <порт>]\n\n")
+		fmt.Fprintf(os.Stderr, "  config-analyzer --grpc [--grpc-port <порт>]\n\n")
 		fmt.Fprintf(os.Stderr, "Флаги:\n")
 		flag.PrintDefaults()
 	}
@@ -45,7 +54,8 @@ func parseFlags() *CLIConfig {
 	flag.BoolVar(&cfg.useDirectory, "dir", false, "прочитать все конфигурации из директории (рекурсивно)")
 	flag.BoolVar(&cfg.serverMode, "server", false, "запустить HTTP сервер")
 	flag.BoolVar(&cfg.grpcMode, "grpc", false, "запустить gRPC сервер")
-	flag.StringVar(&cfg.serverPort, "port", "8080", "порт для сервера (по умолчанию: 8080)")
+	flag.StringVar(&cfg.serverPort, "port", getEnv("PORT", "8080"), "порт для HTTP сервера (env: PORT, по умолчанию: 8080)")
+	flag.StringVar(&cfg.grpcPort, "grpc-port", getEnv("GRPC_PORT", "50051"), "порт для gRPC сервера (env: GRPC_PORT, по умолчанию: 50051)")
 	flag.Parse()
 	return &cfg
 }
@@ -64,6 +74,13 @@ func runGRPCServer(port string) error {
 		return fmt.Errorf("ошибка запуска gRPC сервера: %w", err)
 	}
 	return nil
+}
+
+func validatePorts(cfg *CLIConfig) {
+	if cfg.serverMode && cfg.grpcMode && cfg.serverPort == cfg.grpcPort {
+		slog.Error("HTTP и gRPC порты не должны совпадать", "port", cfg.serverPort)
+		os.Exit(1)
+	}
 }
 
 func runDirectoryMode(dir string, silent bool) error {
@@ -167,14 +184,17 @@ func runClientMode(cfg *CLIConfig, args []string) error {
 }
 
 func main() {
+	godotenv.Load()
+
 	cfg := parseFlags()
+	validatePorts(cfg)
 
 	var err error
 	switch {
 	case cfg.serverMode:
 		err = runHTTPServer(cfg.serverPort)
 	case cfg.grpcMode:
-		err = runGRPCServer(cfg.serverPort)
+		err = runGRPCServer(cfg.grpcPort)
 	default:
 		args := flag.Args()
 		err = runClientMode(cfg, args)
