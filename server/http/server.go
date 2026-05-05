@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -13,18 +14,16 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
-
-	"gopkg.in/yaml.v3"
+	"github.com/lopatich-privet/sec-config-scanner/internal/service"
 )
 
 type Server struct {
-	analyzer *analyzer.Analyzer
-	port     string
-	server   *http.Server
-	logger   *slog.Logger
+	service service.ConfigAnalyzer
+	port    string
+	server  *http.Server
+	logger  *slog.Logger
 }
 
 type AnalyzeRequest struct {
@@ -39,8 +38,7 @@ type IssueResponse struct {
 }
 
 type AnalyzeResponse struct {
-	Success bool            `json:"success"`
-	Issues  []IssueResponse `json:"issues,omitempty"`
+	Issues []IssueResponse `json:"issues,omitempty"`
 }
 
 type ErrorResponse struct {
@@ -49,9 +47,9 @@ type ErrorResponse struct {
 
 func NewServer(port string) *Server {
 	return &Server{
-		analyzer: analyzer.NewAnalyzer(rules.GetDefaultRules()),
-		port:     port,
-		logger:   slog.Default(),
+		service: service.NewAnalyzerService(rules.GetDefaultRules()),
+		port:    port,
+		logger:  slog.Default(),
 	}
 }
 
@@ -71,20 +69,25 @@ func (s *Server) Start() error {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	errCh := make(chan error, 1)
 
 	go func() {
 		s.logger.Info("HTTP server started", "addr", fmt.Sprintf("http://0.0.0.0:%s", s.port))
 		if err := s.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			s.logger.Error("server error", "error", err)
-			os.Exit(1)
+			errCh <- fmt.Errorf("HTTP server error: %w", err)
 		}
 	}()
 
-	<-stop
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	s.logger.Info("shutting down server...")
+	select {
+	case err := <-errCh:
+		return err
+	case sig := <-stop:
+		s.logger.Info("received signal, shutting down...", "signal", sig)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -102,34 +105,27 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, 10<<20)) // 10MB limit
+	body, err := io.ReadAll(io.LimitReader(r.Body, 10<<20))
 	if err != nil {
 		s.writeJSONError(w, http.StatusBadRequest, "failed to read request body")
 		return
 	}
 	defer r.Body.Close()
 
-	var config map[string]any
-
+	format := parser.FormatJSON
 	contentType := r.Header.Get("Content-Type")
-	switch {
-	case strings.Contains(contentType, "yaml"), strings.Contains(contentType, "yml"):
-		if err := yaml.Unmarshal(body, &config); err != nil {
-			s.writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse YAML: %v", err))
-			return
-		}
-	default:
-		if err := json.Unmarshal(body, &config); err != nil {
-			s.writeJSONError(w, http.StatusBadRequest, fmt.Sprintf("failed to parse JSON: %v", err))
-			return
-		}
+	if strings.Contains(contentType, "yaml") || strings.Contains(contentType, "yml") {
+		format = parser.FormatYAML
 	}
 
-	issues := s.analyzer.Analyze(&parser.Config{Data: config})
+	issues, err := s.service.Analyze(r.Context(), body, format)
+	if err != nil {
+		s.writeJSONError(w, mapHTTPCode(err), err.Error())
+		return
+	}
 
 	response := AnalyzeResponse{
-		Success: len(issues) == 0,
-		Issues:  make([]IssueResponse, len(issues)),
+		Issues: make([]IssueResponse, len(issues)),
 	}
 
 	for i, issue := range issues {
@@ -162,6 +158,18 @@ func (s *Server) writeJSON(w http.ResponseWriter, status int, data any) {
 
 func (s *Server) writeJSONError(w http.ResponseWriter, status int, message string) {
 	s.writeJSON(w, status, ErrorResponse{Error: message})
+}
+
+func mapHTTPCode(err error) int {
+	if errors.Is(err, service.ErrUnsupportedFormat) ||
+		errors.Is(err, service.ErrParseFailed) ||
+		errors.Is(err, service.ErrEmptyData) {
+		return http.StatusBadRequest
+	}
+	if errors.Is(err, context.Canceled) {
+		return http.StatusRequestTimeout
+	}
+	return http.StatusInternalServerError
 }
 
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {

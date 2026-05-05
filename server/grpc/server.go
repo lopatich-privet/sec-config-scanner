@@ -2,7 +2,7 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -11,52 +11,57 @@ import (
 	"syscall"
 
 	"github.com/lopatich-privet/sec-config-scanner/api/gen"
-	"github.com/lopatich-privet/sec-config-scanner/internal/analyzer"
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
+	"github.com/lopatich-privet/sec-config-scanner/internal/service"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"gopkg.in/yaml.v3"
 )
 
 type Server struct {
 	gen.UnimplementedAnalyzerServiceServer
-	analyzer *analyzer.Analyzer
-	logger   *slog.Logger
-	port     string
+	service service.ConfigAnalyzer
+	logger  *slog.Logger
+	port    string
 }
 
 func NewServer(port string) *Server {
 	return &Server{
-		analyzer: analyzer.NewAnalyzer(rules.GetDefaultRules()),
-		logger:   slog.Default(),
-		port:     port,
+		service: service.NewAnalyzerService(rules.GetDefaultRules()),
+		logger:  slog.Default(),
+		port:    port,
 	}
 }
 
 func (s *Server) Start() error {
 	listener, err := net.Listen("tcp", ":"+s.port)
 	if err != nil {
-		return fmt.Errorf("failed to listen on port %s: %w", s.port, err)
+		return fmt.Errorf("failed to listen: %w", err)
 	}
 
 	grpcServer := grpc.NewServer()
 	gen.RegisterAnalyzerServiceServer(grpcServer, s)
 
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	errCh := make(chan error, 1)
 
 	go func() {
-		s.logger.Info("gRPC server started", "addr", fmt.Sprintf("0.0.0.0:%s", s.port))
+		s.logger.Info("gRPC server started", "addr", "0.0.0.0:"+s.port)
 		if err := grpcServer.Serve(listener); err != nil {
-			s.logger.Error("gRPC server error", "error", err)
-			os.Exit(1)
+			errCh <- fmt.Errorf("gRPC server error: %w", err)
 		}
 	}()
 
-	<-stop
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	select {
+	case err := <-errCh:
+		return err
+	case sig := <-stop:
+		s.logger.Info("received signal, shutting down...", "signal", sig)
+	}
 
 	s.logger.Info("shutting down gRPC server...")
 	grpcServer.GracefulStop()
@@ -66,24 +71,10 @@ func (s *Server) Start() error {
 }
 
 func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.AnalyzeResponse, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, status.Error(codes.Canceled, "request canceled")
+	issues, err := s.service.Analyze(ctx, req.Data, parser.Format(req.Format))
+	if err != nil {
+		return nil, status.Errorf(mapToGRPCCode(err), "%v", err)
 	}
-
-	var config map[string]any
-
-	switch req.Format {
-	case "yaml", "yml":
-		if err := yaml.Unmarshal(req.Data, &config); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "failed to parse YAML: %v", err)
-		}
-	default:
-		if err := json.Unmarshal(req.Data, &config); err != nil {
-			return nil, status.Errorf(codes.InvalidArgument, "failed to parse JSON: %v", err)
-		}
-	}
-
-	issues := s.analyzer.Analyze(&parser.Config{Data: config})
 
 	pbIssues := make([]*gen.Issue, len(issues))
 	for i, issue := range issues {
@@ -98,4 +89,16 @@ func (s *Server) Analyze(ctx context.Context, req *gen.AnalyzeRequest) (*gen.Ana
 	return &gen.AnalyzeResponse{
 		Issues: pbIssues,
 	}, nil
+}
+
+func mapToGRPCCode(err error) codes.Code {
+	if errors.Is(err, service.ErrUnsupportedFormat) ||
+		errors.Is(err, service.ErrParseFailed) ||
+		errors.Is(err, service.ErrEmptyData) {
+		return codes.InvalidArgument
+	}
+	if errors.Is(err, context.Canceled) {
+		return codes.Canceled
+	}
+	return codes.Internal
 }
