@@ -16,23 +16,7 @@ func ParseDirectory(dir string) ([]*Config, error) {
 		if err != nil {
 			return err
 		}
-
-		if d.IsDir() {
-			return nil
-		}
-
-		if !isConfigFile(path) {
-			return nil
-		}
-
-		config, err := ParseFile(path)
-		if err != nil {
-			slog.Warn("failed to parse file", "path", path, "error", err)
-			return nil
-		}
-
-		configs = append(configs, config)
-		return nil
+		return parseFileIfConfig(path, d, &configs)
 	}
 
 	err := filepath.WalkDir(dir, walker)
@@ -45,6 +29,25 @@ func ParseDirectory(dir string) ([]*Config, error) {
 	}
 
 	return configs, nil
+}
+
+func parseFileIfConfig(path string, d os.DirEntry, configs *[]*Config) error {
+	if d.IsDir() {
+		return nil
+	}
+
+	if !isConfigFile(path) {
+		return nil
+	}
+
+	config, err := ParseFile(path)
+	if err != nil {
+		slog.Warn("failed to parse file", "path", path, "error", err)
+		return nil
+	}
+
+	*configs = append(*configs, config)
+	return nil
 }
 
 func isConfigFile(path string) bool {
