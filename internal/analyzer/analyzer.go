@@ -24,11 +24,3 @@ func (a *Analyzer) Analyze(cfg map[string]any) []rules.Issue {
 
 	return issues
 }
-
-func (a *Analyzer) AddRule(rule rules.Rule) {
-	a.rules = append(a.rules, rule)
-}
-
-func (a *Analyzer) GetRules() []rules.Rule {
-	return a.rules
-}

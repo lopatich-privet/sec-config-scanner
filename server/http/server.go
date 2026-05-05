@@ -27,8 +27,7 @@ type Server struct {
 }
 
 type AnalyzeRequest struct {
-	Format string          `json:"format"`
-	Data   json.RawMessage `json:"data"`
+	Data json.RawMessage `json:"data"`
 }
 
 type IssueResponse struct {

@@ -18,8 +18,9 @@ func TestNewAnalyzer(t *testing.T) {
 		t.Fatal("NewAnalyzer() returned nil")
 	}
 
-	if len(analyzer.rules) != 2 {
-		t.Errorf("Expected 2 rules, got %d", len(analyzer.rules))
+	issues := analyzer.Analyze(map[string]any{"log": map[string]any{"level": "debug"}})
+	if len(issues) != 1 {
+		t.Errorf("Expected 1 issue for config with debug log, got %d", len(issues))
 	}
 }
 
@@ -113,49 +114,6 @@ func TestAnalyze(t *testing.T) {
 				t.Errorf("Analyze() returned %d issues, want %d", len(issues), tt.wantIssues)
 			}
 		})
-	}
-}
-
-func TestAddRule(t *testing.T) {
-	analyzer := NewAnalyzer([]rules.Rule{})
-
-	if len(analyzer.rules) != 0 {
-		t.Errorf("Expected 0 rules initially, got %d", len(analyzer.rules))
-	}
-
-	analyzer.AddRule(rules.NewDebugLogRule())
-
-	if len(analyzer.rules) != 1 {
-		t.Errorf("Expected 1 rule after AddRule, got %d", len(analyzer.rules))
-	}
-
-	analyzer.AddRule(rules.NewBindAllRule())
-
-	if len(analyzer.rules) != 2 {
-		t.Errorf("Expected 2 rules after second AddRule, got %d", len(analyzer.rules))
-	}
-}
-
-func TestGetRules(t *testing.T) {
-	rulesList := []rules.Rule{
-		rules.NewDebugLogRule(),
-		rules.NewBindAllRule(),
-	}
-
-	analyzer := NewAnalyzer(rulesList)
-
-	gotRules := analyzer.GetRules()
-
-	if len(gotRules) != 2 {
-		t.Errorf("Expected 2 rules, got %d", len(gotRules))
-	}
-
-	if gotRules[0].Name() != "debug_log" {
-		t.Errorf("Expected first rule to be debug_log, got %s", gotRules[0].Name())
-	}
-
-	if gotRules[1].Name() != "bind_all" {
-		t.Errorf("Expected second rule to be bind_all, got %s", gotRules[1].Name())
 	}
 }
 
