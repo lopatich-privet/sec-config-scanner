@@ -1,50 +1,46 @@
+version: "2"
+
 run:
-  timeout: 5m
   issues-exit-code: 1
   tests: false
 
 linters:
   enable:
-    - errcheck
-    - govet
-    - revive
     - gocognit
     - gosec
-    - gosimple
-    - ineffassign
-    - staticcheck
-    - unused
-
-linters-settings:
-  gocognit:
-    min-complexity: 10
-
-  revive:
+    - revive
+  settings:
+    gocognit:
+      min-complexity: 7
+    govet:
+      disable:
+        - fieldalignment
+      enable-all: true
+    revive:
+      rules:
+        - name: exported
+        - name: unused-parameter
+        - name: unreachable-code
+        - name: context-as-argument
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
     rules:
-      - name: exported
-      - name: unused-parameter
-      - name: unreachable-code
-      - name: context-as-argument
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-
-  govet:
-    enable-all: true
-    disable:
-      - fieldalignment
-
-  gosec:
-    excludes:
-      - G104
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - gosec
-        - errcheck
-
-    - path: api/gen/
-      linters:
-        - all
+      - linters:
+          - errcheck
+          - gosec
+        path: _test\.go
+      - linters:
+          - all
+        path: api/gen/
+      - linters:
+          - gosec
+        source: ^fmt\.F
+        text: G104

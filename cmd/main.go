@@ -184,7 +184,9 @@ func runClientMode(cfg *CLIConfig, args []string) error {
 }
 
 func main() {
-	godotenv.Load()
+	if err := godotenv.Load(); err != nil {
+		slog.Debug(".env file not loaded", "error", err)
+	}
 
 	cfg := parseFlags()
 	validatePorts(cfg)

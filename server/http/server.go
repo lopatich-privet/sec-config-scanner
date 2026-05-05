@@ -108,44 +108,13 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Fail-fast: empty Content-Length
-	if r.ContentLength == 0 {
-		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
-		return
-	}
-
-	// Content-Type validation
-	contentType := r.Header.Get("Content-Type")
-	if contentType == "" {
-		s.writeJSONError(w, http.StatusBadRequest, errContentTypeMissing)
-		return
-	}
-
-	format, ok := parser.FormatFromContentType(contentType)
+	format, ok := s.validateRequest(w, r)
 	if !ok {
-		s.writeJSONError(w, http.StatusUnsupportedMediaType,
-			fmt.Sprintf("unsupported Content-Type: %q", contentType))
 		return
 	}
 
-	// Read body with MaxBytesReader (closes connection on limit exceeded)
-	reader := http.MaxBytesReader(w, r.Body, maxBodySize)
-	body, err := io.ReadAll(reader)
-	if err != nil {
-		var maxBytesErr *http.MaxBytesError
-		if errors.As(err, &maxBytesErr) {
-			s.writeJSONError(w, http.StatusRequestEntityTooLarge,
-				fmt.Sprintf("request body exceeds %d bytes limit", maxBodySize))
-			return
-		}
-		s.writeJSONError(w, http.StatusBadRequest, "failed to read request body")
-		return
-	}
-	defer r.Body.Close()
-
-	// Defense against lying Content-Length
-	if len(body) == 0 {
-		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
+	body, ok := s.readBody(w, r)
+	if !ok {
 		return
 	}
 
@@ -169,6 +138,51 @@ func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.writeJSON(w, http.StatusOK, response)
+}
+
+func (s *Server) validateRequest(w http.ResponseWriter, r *http.Request) (parser.Format, bool) {
+	if r.ContentLength == 0 {
+		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
+		return "", false
+	}
+
+	contentType := r.Header.Get("Content-Type")
+	if contentType == "" {
+		s.writeJSONError(w, http.StatusBadRequest, errContentTypeMissing)
+		return "", false
+	}
+
+	format, ok := parser.FormatFromContentType(contentType)
+	if !ok {
+		s.writeJSONError(w, http.StatusUnsupportedMediaType,
+			fmt.Sprintf("unsupported Content-Type: %q", contentType))
+		return "", false
+	}
+
+	return format, true
+}
+
+func (s *Server) readBody(w http.ResponseWriter, r *http.Request) ([]byte, bool) {
+	reader := http.MaxBytesReader(w, r.Body, maxBodySize)
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			s.writeJSONError(w, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("request body exceeds %d bytes limit", maxBodySize))
+			return nil, false
+		}
+		s.writeJSONError(w, http.StatusBadRequest, "failed to read request body")
+		return nil, false
+	}
+	defer r.Body.Close()
+
+	if len(body) == 0 {
+		s.writeJSONError(w, http.StatusBadRequest, errBodyEmpty)
+		return nil, false
+	}
+
+	return body, true
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {

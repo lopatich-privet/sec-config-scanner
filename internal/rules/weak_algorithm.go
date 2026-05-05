@@ -44,23 +44,21 @@ func (r *WeakAlgorithmRule) Name() string {
 
 func (r *WeakAlgorithmRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
+	traverseAndCheck(cfg.Data, "", r.makeChecker(&issues))
+	return issues
+}
 
-	traverseAndCheck(cfg.Data, "", func(path string, value any) bool {
-		if value == nil {
-			return false
-		}
-
+func (r *WeakAlgorithmRule) makeChecker(issues *[]Issue) func(path string, value any) bool {
+	return func(path string, value any) bool {
 		str, ok := value.(string)
 		if !ok || str == "" {
 			return false
 		}
-
 		if !containsAlgorithmKeyword(path) {
 			return false
 		}
-
 		if isWeakAlgorithm(str) {
-			issues = append(issues, Issue{
+			*issues = append(*issues, Issue{
 				Severity:    HIGH,
 				Field:       path,
 				Description: fmt.Sprintf("слишком слабый алгоритм - %s", str),
@@ -68,11 +66,8 @@ func (r *WeakAlgorithmRule) Check(cfg *parser.Config) []Issue {
 			})
 			return true
 		}
-
 		return false
-	})
-
-	return issues
+	}
 }
 
 func NewWeakAlgorithmRule() Rule {
