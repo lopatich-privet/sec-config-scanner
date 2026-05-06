@@ -10,6 +10,7 @@ import (
 	"github.com/lopatich-privet/sec-config-scanner/internal/output"
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
+	"github.com/lopatich-privet/sec-config-scanner/internal/service"
 	"github.com/lopatich-privet/sec-config-scanner/server/grpc"
 	httpserver "github.com/lopatich-privet/sec-config-scanner/server/http"
 
@@ -60,16 +61,16 @@ func parseFlags() *CLIConfig {
 	return &cfg
 }
 
-func runHTTPServer(port string) error {
-	server := httpserver.NewServer(port)
+func runHTTPServer(port string, svc service.ConfigAnalyzer) error {
+	server := httpserver.NewServer(port, svc)
 	if err := server.Start(); err != nil {
 		return fmt.Errorf("ошибка запуска HTTP сервера: %w", err)
 	}
 	return nil
 }
 
-func runGRPCServer(port string) error {
-	server := grpc.NewServer(port)
+func runGRPCServer(port string, svc service.ConfigAnalyzer) error {
+	server := grpc.NewServer(port, svc)
 	if err := server.Start(); err != nil {
 		return fmt.Errorf("ошибка запуска gRPC сервера: %w", err)
 	}
@@ -92,16 +93,9 @@ func runDirectoryMode(dir string, silent bool) error {
 	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 	var allIssues []rules.Issue
 
-	fpRule := rules.NewFilePermissionRule().(*rules.FilePermissionRule)
-
 	for _, config := range configs {
 		issues := analyzerInstance.Analyze(config)
 		allIssues = append(allIssues, issues...)
-
-		if config.FilePath != "" {
-			fileIssues := fpRule.CheckFilePermissions(config.FilePath)
-			allIssues = append(allIssues, fileIssues...)
-		}
 	}
 
 	out := output.NewOutput(allIssues)
@@ -128,12 +122,6 @@ func runSingleConfigMode(useStdin bool, filePath string, silent bool) error {
 
 	analyzerInstance := analyzer.NewAnalyzer(rules.GetFileModeRules())
 	issues := analyzerInstance.Analyze(config)
-
-	if config.FilePath != "" {
-		fpRule := rules.NewFilePermissionRule().(*rules.FilePermissionRule)
-		fileIssues := fpRule.CheckFilePermissions(config.FilePath)
-		issues = append(issues, fileIssues...)
-	}
 
 	out := output.NewOutput(issues)
 	out.Print()
@@ -191,12 +179,22 @@ func main() {
 	cfg := parseFlags()
 	validatePorts(cfg)
 
+	svc := service.NewAnalyzerService(rules.GetFileModeRules())
+
 	var err error
 	switch {
+	case cfg.serverMode && cfg.grpcMode:
+		go func() {
+			if err = runHTTPServer(cfg.serverPort, svc); err != nil {
+				slog.Error("HTTP server error", "error", err)
+				os.Exit(1)
+			}
+		}()
+		err = runGRPCServer(cfg.grpcPort, svc)
 	case cfg.serverMode:
-		err = runHTTPServer(cfg.serverPort)
+		err = runHTTPServer(cfg.serverPort, svc)
 	case cfg.grpcMode:
-		err = runGRPCServer(cfg.grpcPort)
+		err = runGRPCServer(cfg.grpcPort, svc)
 	default:
 		args := flag.Args()
 		err = runClientMode(cfg, args)

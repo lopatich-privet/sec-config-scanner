@@ -12,7 +12,6 @@ import (
 
 	"github.com/lopatich-privet/sec-config-scanner/api/gen"
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
-	"github.com/lopatich-privet/sec-config-scanner/internal/rules"
 	"github.com/lopatich-privet/sec-config-scanner/internal/service"
 
 	"google.golang.org/grpc"
@@ -27,9 +26,9 @@ type Server struct {
 	port    string
 }
 
-func NewServer(port string) *Server {
+func NewServer(port string, svc service.ConfigAnalyzer) *Server {
 	return &Server{
-		service: service.NewAnalyzerService(rules.GetDefaultRules()),
+		service: svc,
 		logger:  slog.Default(),
 		port:    port,
 	}

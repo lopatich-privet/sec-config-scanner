@@ -181,3 +181,36 @@ func TestFilePermissionRule_Name(t *testing.T) {
 		t.Errorf("Name() = %s, want file_permissions", rule.Name())
 	}
 }
+
+func TestFilePermissionRule_Check_ConfigFileItself(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("file permission tests are not applicable on Windows")
+	}
+
+	rule := NewFilePermissionRule()
+
+	tmpDir := t.TempDir()
+	configFile := filepath.Join(tmpDir, "config.yaml")
+	configContent := `server: localhost`
+	if err := os.WriteFile(configFile, []byte(configContent), 0666); err != nil {
+		t.Fatalf("failed to create temp config file: %v", err)
+	}
+
+	cfg := &parser.Config{
+		Data: map[string]any{
+			"server": "localhost",
+		},
+		FilePath: configFile,
+	}
+
+	issues := rule.Check(cfg)
+	if len(issues) != 1 {
+		t.Errorf("Check() returned %d issues, want 1 (config file itself should be checked)", len(issues))
+	}
+	if issues[0].Severity != HIGH {
+		t.Errorf("expected HIGH severity for world-writable config file, got %s", issues[0].Severity)
+	}
+	if issues[0].Field != configFile {
+		t.Errorf("expected Field to be %s, got %s", configFile, issues[0].Field)
+	}
+}

@@ -33,11 +33,15 @@ func (r *FilePermissionRule) Name() string {
 func (r *FilePermissionRule) Check(cfg *parser.Config) []Issue {
 	var issues []Issue
 
-	filePaths := extractFilePaths(cfg.Data)
+	// Проверка прав самого конфигурационного файла
+	if cfg.FilePath != "" {
+		issues = append(issues, r.CheckFilePermissions(cfg.FilePath)...)
+	}
 
+	// Проверка путей из значений конфига
+	filePaths := extractFilePaths(cfg.Data)
 	for _, filePath := range filePaths {
-		fileIssues := r.CheckFilePermissions(filePath)
-		issues = append(issues, fileIssues...)
+		issues = append(issues, r.CheckFilePermissions(filePath)...)
 	}
 
 	return issues
