@@ -48,7 +48,7 @@ func (s *AnalyzerService) Analyze(ctx context.Context, data []byte, format parse
 		return nil, fmt.Errorf("%w: %v", ErrParseFailed, err)
 	}
 
-	issues := s.analyzer.Analyze(&parser.Config{Data: result.Data})
+	issues := s.analyzer.Analyze(result)
 
 	return issues, nil
 }

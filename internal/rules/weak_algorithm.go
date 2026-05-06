@@ -7,23 +7,17 @@ import (
 	"github.com/lopatich-privet/sec-config-scanner/internal/parser"
 )
 
-var weakAlgorithms = map[string]bool{
-	"md5":  true,
-	"md4":  true,
-	"md2":  true,
-	"sha1": true,
-	"sha-1": true,
-	"des":  true,
-	"3des": true,
-	"rc4":  true,
-	"null": true,
+var weakAlgorithms = map[string]struct{}{
+	"md5": {}, "md4": {}, "md2": {}, "sha1": {}, "sha-1": {},
+	"des": {}, "3des": {}, "rc4": {}, "null": {},
 }
 
 var algorithmKeywords = []string{"algorithm", "algo", "cipher", "digest", "hash", "encryption"}
 
 func isWeakAlgorithm(value string) bool {
 	lowerValue := strings.ToLower(strings.TrimSpace(value))
-	return weakAlgorithms[lowerValue]
+	_, ok := weakAlgorithms[lowerValue]
+	return ok
 }
 
 func containsAlgorithmKeyword(path string) bool {

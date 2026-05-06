@@ -1,6 +1,8 @@
 package parser
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,7 +40,7 @@ func TestParseDirectory_Success(t *testing.T) {
 				t.Fatalf("failed to create test file: %v", err)
 			}
 
-			configs, err := ParseDirectory(tmpDir)
+			configs, err := ParseDirectory(context.Background(), tmpDir)
 			if err != nil {
 				t.Fatalf("ParseDirectory() error: %v", err)
 			}
@@ -78,7 +80,7 @@ func TestParseDirectory_NestedFiles(t *testing.T) {
 		t.Fatalf("failed to create file: %v", err)
 	}
 
-	configs, err := ParseDirectory(tmpDir)
+	configs, err := ParseDirectory(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("ParseDirectory() error: %v", err)
 	}
@@ -97,7 +99,7 @@ func TestParseDirectory_SkipsNonConfigFiles(t *testing.T) {
 		t.Fatalf("failed to create file: %v", err)
 	}
 
-	_, err := ParseDirectory(tmpDir)
+	_, err := ParseDirectory(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("expected error for directory with no config files")
 	}
@@ -116,7 +118,7 @@ func TestParseDirectory_InvalidConfigSkipped(t *testing.T) {
 		t.Fatalf("failed to create file: %v", err)
 	}
 
-	configs, err := ParseDirectory(tmpDir)
+	configs, err := ParseDirectory(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("ParseDirectory() error: %v", err)
 	}
@@ -128,16 +130,34 @@ func TestParseDirectory_InvalidConfigSkipped(t *testing.T) {
 func TestParseDirectory_EmptyDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	_, err := ParseDirectory(tmpDir)
+	_, err := ParseDirectory(context.Background(), tmpDir)
 	if err == nil {
 		t.Fatal("expected error for empty directory")
 	}
 }
 
 func TestParseDirectory_NonExistentDirectory(t *testing.T) {
-	_, err := ParseDirectory("/nonexistent/path/that/does/not/exist")
+	_, err := ParseDirectory(context.Background(), "/nonexistent/path/that/does/not/exist")
 	if err == nil {
 		t.Fatal("expected error for non-existent directory")
+	}
+}
+
+func TestParseDirectory_CanceledContext(t *testing.T) {
+	tmpDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.json"), []byte(`{"a": 1}`), 0644); err != nil {
+		t.Fatalf("failed to create file: %v", err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := ParseDirectory(ctx, tmpDir)
+	if err == nil {
+		t.Fatal("expected error for canceled context")
+	}
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("expected context.Canceled, got %v", err)
 	}
 }
 
@@ -149,7 +169,7 @@ func TestParseDirectory_FilePathSet(t *testing.T) {
 		t.Fatalf("failed to create file: %v", err)
 	}
 
-	configs, err := ParseDirectory(tmpDir)
+	configs, err := ParseDirectory(context.Background(), tmpDir)
 	if err != nil {
 		t.Fatalf("ParseDirectory() error: %v", err)
 	}

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -8,13 +9,16 @@ import (
 	"strings"
 )
 
-// ParseDirectory recursively parses all JSON/YAML files in the given directory
-func ParseDirectory(dir string) ([]*Config, error) {
+// ParseDirectory recursively parses all JSON/YAML files in given directory
+func ParseDirectory(ctx context.Context, dir string) ([]*Config, error) {
 	var configs []*Config
 
 	walker := func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+		if ctxErr := ctx.Err(); ctxErr != nil {
+			return ctxErr
 		}
 		return parseFileIfConfig(path, d, &configs)
 	}

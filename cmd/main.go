@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -85,7 +86,7 @@ func validatePorts(cfg *CLIConfig) {
 }
 
 func runDirectoryMode(dir string, silent bool) error {
-	configs, err := parser.ParseDirectory(dir)
+	configs, err := parser.ParseDirectory(context.Background(), dir)
 	if err != nil {
 		return fmt.Errorf("ошибка парсинга директории: %w", err)
 	}
@@ -171,6 +172,30 @@ func runClientMode(cfg *CLIConfig, args []string) error {
 	return runSingleConfigMode(cfg.useStdin, filePath, cfg.silent)
 }
 
+func runMode(cfg *CLIConfig, svc service.ConfigAnalyzer) error {
+	var err error
+	switch {
+	case cfg.serverMode && cfg.grpcMode:
+		errCh := make(chan error, 2)
+		go func() { errCh <- runHTTPServer(cfg.serverPort, svc) }()
+		go func() { errCh <- runGRPCServer(cfg.grpcPort, svc) }()
+		for range 2 {
+			if e := <-errCh; e != nil {
+				err = e
+				break
+			}
+		}
+	case cfg.serverMode:
+		err = runHTTPServer(cfg.serverPort, svc)
+	case cfg.grpcMode:
+		err = runGRPCServer(cfg.grpcPort, svc)
+	default:
+		args := flag.Args()
+		err = runClientMode(cfg, args)
+	}
+	return err
+}
+
 func main() {
 	if err := godotenv.Load(); err != nil {
 		slog.Debug(".env file not loaded", "error", err)
@@ -181,26 +206,7 @@ func main() {
 
 	svc := service.NewAnalyzerService(rules.GetFileModeRules())
 
-	var err error
-	switch {
-	case cfg.serverMode && cfg.grpcMode:
-		go func() {
-			if err = runHTTPServer(cfg.serverPort, svc); err != nil {
-				slog.Error("HTTP server error", "error", err)
-				os.Exit(1)
-			}
-		}()
-		err = runGRPCServer(cfg.grpcPort, svc)
-	case cfg.serverMode:
-		err = runHTTPServer(cfg.serverPort, svc)
-	case cfg.grpcMode:
-		err = runGRPCServer(cfg.grpcPort, svc)
-	default:
-		args := flag.Args()
-		err = runClientMode(cfg, args)
-	}
-
-	if err != nil {
+	if err := runMode(cfg, svc); err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}

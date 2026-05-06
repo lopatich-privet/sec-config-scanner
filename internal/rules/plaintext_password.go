@@ -28,11 +28,11 @@ func (r *PlaintextPasswordRule) Check(cfg *parser.Config) []Issue {
 }
 
 func checkPlaintextPassword(path string, value any, keywords []string) *Issue {
-	if !isValidStringValue(value) {
+	str, ok := value.(string)
+	if !ok || str == "" {
 		return nil
 	}
 
-	str := value.(string)
 	if isHash(str) {
 		return nil
 	}
@@ -47,11 +47,6 @@ func checkPlaintextPassword(path string, value any, keywords []string) *Issue {
 		Description: "пароль в открытом виде",
 		Advice:      "Используйте переменные окружения или vault для хранения секретов.",
 	}
-}
-
-func isValidStringValue(value any) bool {
-	str, ok := value.(string)
-	return ok && str != ""
 }
 
 func containsPasswordKeyword(path string, keywords []string) bool {
