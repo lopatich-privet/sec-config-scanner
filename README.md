@@ -1,436 +1,103 @@
 # Config Analyzer
 
-Анализатор конфигурационных файлов (JSON/YAML) на предмет уязвимостей и проблем безопасности.
+CLI / HTTP / gRPC анализатор конфигураций **JSON и YAML**. Ориентирован на **DevSecOps / SRE**: выдаёт проблемы с `LOW`, `MEDIUM`, `HIGH` и возвращает ненулевой exit code при наличии проблем (кроме режима `--silent`).
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/lopatich-privet/sec-config-scanner)](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
-[![Go Version](https://img.shields.io/badge/go-1.24-blue)](https://go.dev/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![golangci-lint](https://img.shields.io/badge/golangci--linted-success)](https://golangci-lint.run)
+[Go Report Card](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
+[Go](https://go.dev/)
+[License: MIT](https://opensource.org/licenses/MIT)
+[golangci-lint](https://golangci-lint.run)
 
 ## Установка
 
-### Сборка из исходников
-
 ```bash
-git clone https://github.com/lopatich-privet/sec-config-scanner.git
-cd sec-config-scanner
 go build -o config-analyzer ./cmd/main.go
-```
-
-### Docker
-
-```bash
-docker build -t config-analyzer .
-docker run --rm config-analyzer --help
+./config-analyzer --help
 ```
 
 ## Использование
 
-### Анализ файла
-
 ```bash
-./config-analyzer config.json
-./config-analyzer config.yaml
+./config-analyzer ./config.yaml
+./config-analyzer --stdin < ./config.json
+./config-analyzer --dir ./configs
+./config-analyzer --silent ./config.yaml
 ```
 
-### Анализ из stdin
+Порты (опционально): `PORT` (HTTP, по умолчанию `8080`), `GRPC_PORT` (gRPC, по умолчанию `50051`) — см. `.env.example`.
 
-```bash
-cat config.json | ./config-analyzer --stdin
-```
-
-### Рекурсивный анализ директории
-
-```bash
-./config-analyzer --dir /path/to/configs
-```
-
-### Флаг silent
-
-```bash
-# Без флага -s: выход с кодом 1, если найдены проблемы
-./config-analyzer config.json
-
-# С флагом -s: вывод результатов, но выход с кодом 0
-./config-analyzer --silent config.json
-```
-
-## HTTP Server
-
-### Запуск
+## HTTP API
 
 ```bash
 ./config-analyzer --server --port 8080
+curl -sS -X POST http://localhost:8080/analyze -H "Content-Type: application/json" -d '{"log":{"level":"debug"}}'
+curl -sS http://localhost:8080/health
 ```
 
-### Анализ через HTTP API
-
-**Linux/Mac (bash):**
+## gRPC
 
 ```bash
-curl -X POST http://localhost:8080/analyze \
-  -H "Content-Type: application/json" \
-  -d '{
-    "log": {"level": "debug"},
-    "password": "secret123"
-  }'
-```
-
-**Windows (PowerShell):**
-
-```powershell
-$body = @{
-    log = @{
-        level = "debug"
-    }
-    password = "secret123"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/json" -Body $body
-```
-
-**YAML:**
-
-```bash
-curl -X POST http://localhost:8080/analyze \
-  -H "Content-Type: application/yaml" \
-  -d 'log:
-  level: debug
-  password: secret123'
-```
-
-### Health check
-
-```bash
-curl http://localhost:8080/health
-```
-
-**Ответ:**
-
-```json
-{
-  "status": "ok"
-}
-```
-
-## gRPC Server
-
-### Запуск
-
-```bash
-./config-analyzer --grpc --port 9090
-```
-
-### Пример клиента
-
-Запуск встроенного клиента для тестирования:
-
-```bash
-# Запуск gRPC сервера
-./config-analyzer --grpc --port 9090
-
-# Запуск клиента (в другом терминале, из корня проекта)
+./config-analyzer --grpc --grpc-port 50051
 go run ./cmd/grpc-client/main.go
-
-# Запуск gRPC клиента (с использованием клиентского режима)
-cd cmd/grpc-client && go run main.go
 ```
 
-### gRPC Status Codes
+## Архитектура
 
-Сервер возвращает стандартные gRPC status-коды:
+**Чистая архитектура**: транспортный слой не содержит бизнес-правил; он валидирует вход и вызывает сервис анализа.
 
-| Status Code | Описание                            |
-| ----------- | ----------------------------------- |
-| `OK`        | Анализ выполнен успешно             |
-| `InvalidArgument` | Ошибка парсинга JSON/YAML      |
-| `Canceled`  | Запрос отменён клиентом             |
-| `Internal`  | Внутренняя ошибка сервера          |
 
-### Пример обработки ошибок на клиенте (Go)
+| Слой       | Ответственность                                | Код                                                 |
+| ---------- | ---------------------------------------------- | --------------------------------------------------- |
+| Транспорт  | HTTP / gRPC адаптеры, лимиты, проверка формата | `server/http/server.go`, `server/grpc/server.go`    |
+| Приложение | Парсинг байтов, запуск правил, доменные ошибки | `internal/service/analyzer_service.go`              |
+| Домен      | Проверки правил на распарсенной конфигурации   | `internal/analyzer/analyzer.go`, `internal/rules/*` |
 
-```go
-resp, err := client.Analyze(ctx, req)
-if err != nil {
-    st, ok := status.FromError(err)
-    if !ok {
-        log.Fatalf("unknown error: %v", err)
-    }
-    switch st.Code() {
-    case codes.InvalidArgument:
-        log.Printf("Invalid request: %s", st.Message())
-    case codes.Internal:
-        log.Printf("Server error: %s", st.Message())
-    case codes.Canceled:
-        log.Printf("Request canceled")
-    default:
-        log.Printf("Unexpected error: %s", st.Message())
-    }
-    return
-}
 
-// Обработка успешного ответа
-log.Printf("Analysis completed, found %d issues", len(resp.Issues))
-```
+**Внедрение зависимостей (DI)**: оба сервера принимают `service.ConfigAnalyzer` — `http.NewServer(port, svc)`, `grpc.NewServer(port, svc)`. Это упрощает тесты (mock) и держит транспортный слой тонким.
 
----
+## Безопасность и валидация
 
-## Правила анализа
+### Рекурсивный обход (включая `[]any`)
 
-### 1. Debug Log (LOW)
+`traverseAndCheck()` в `internal/rules/helpers.go` обходит `map[string]any`, `map[any]any` и `**[]any`**, собирая пути с индексами массивов (например `a.b[0].c`).
 
-Проверяет уровень логирования.
+### Контекст TLS (меньше ложных срабатываний)
 
-**Проблема:** `log.level: debug` или аналогичные поля.
+`internal/rules/tls_disabled.go` трактует `enabled: false` как TLS-проблему **только** когда путь выглядит TLS-специфичным (`tls`, `ssl`, `https`, `secure`). Это не флаггит `cache.enabled: false` и похожие случаи.
 
-**Совет:** Поменяйте режим на более избирательный (info+).
+### Валидация транспортного слоя (кратко)
 
----
+- **HTTP**: `POST`, непустое тело запроса, обязательный `Content-Type`, белый список через `parser.FormatFromContentType`, лимит размера тела (`MaxBytesReader`).
+- **gRPC**: непустой `data`, белый список форматов через `parser.FormatFromString`.
 
-### 2. Plaintext Password (HIGH)
+## Контракт API
 
-Ищет пароли в открытом виде.
+### gRPC: errors → status codes (как в `server/grpc/server.go`)
 
-**Проверяемые поля:** `password`, `passwd`, `pwd`, `secret`.
+Клиентам важно ветвиться по `**status.Code(err)`**, а не по тексту ошибок.
 
-**Исключения:** Хеши (MD5, SHA1, SHA256, SHA512, bcrypt) и переменные окружения (`$VAR`).
 
-**Пример проблемы:**
+| Источник     | Условие                                                  | gRPC code         |
+| ------------ | -------------------------------------------------------- | ----------------- |
+| Обработчик   | пустой `data`                                            | `InvalidArgument` |
+| Обработчик   | неподдерживаемый `format`                                | `InvalidArgument` |
+| Сервис       | `ErrEmptyData`, `ErrUnsupportedFormat`, `ErrParseFailed` | `InvalidArgument` |
+| Контекст     | `context.Canceled`                                       | `Canceled`        |
+| По умолчанию | любая другая ошибка                                      | `Internal`        |
 
-```yaml
-database:
-  password: "secret123"  # HIGH
-```
 
-**Пример безопасной конфигурации:**
+## Политика прав доступа к файлам
 
-```yaml
-database:
-  password: "$DB_PASSWORD"  # OK - переменная окружения
-  # или
-  password: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"  # OK - SHA256
-```
+`file_permissions` в `internal/rules/file_permissions.go`:
 
-**Совет:** Используйте переменные окружения или vault для хранения секретов.
-
----
-
-### 3. Bind All (MEDIUM)
-
-Проверяет, что сервис не слушает на всех интерфейсах.
-
-**Проблема:** `host: 0.0.0.0` или аналогичные поля.
-
-**Совет:** Ограничьте bind конкретным интерфейсом или внутренним IP.
-
----
-
-### 4. TLS Disabled (HIGH)
-
-Проверяет настройки TLS/SSL.
-
-**Проблемы:**
-
-- `tls.enabled: false`
-- `tls.insecure_skip_verify: true` или аналогичные
-
-**Совет:** Включите TLS в продакшн-окружении.
-
----
-
-### 5. Weak Algorithm (HIGH)
-
-Проверяет использование слабых алгоритмов шифрования и хеширования.
-
-**Проверяемые поля:** `algorithm`, `algo`, `cipher`, `digest`, `hash`, `encryption`.
-
-**Запрещённые алгоритмы:** MD5, SHA1, SHA-1, DES, 3DES, RC4, NULL.
-
-**Пример проблемы:**
-
-```json
-{
-  "crypto": {
-    "algorithm": "md5"  # HIGH
-  }
-}
-```
-
-**Пример безопасной конфигурации:**
-
-```json
-{
-  "crypto": {
-    "algorithm": "sha256"  # OK
-  }
-}
-```
-
-**Совет:** Используйте SHA-256 или выше.
-
----
-
-### 6. File Permissions (MEDIUM)
-
-Проверяет права доступа к файлам, указанным в конфигурации.
-
-**Только при использовании `--dir` или stdin.**
-
-**Проблема:** Файлы с правами `mode & 0077 != 0` (чтение/запись/выполнение для "others").
-
-**Совет:** Ограничьте права доступа (рекомендуется 0600 или 0640).
-
----
+- Проверяет **сам конфиг-файл** через `cfg.FilePath` (подмена/утечка на диске).
+- Проверяет **абсолютные пути** в полях, похожих на пути (сертификаты/ключи и т.п.).
+- **Ошибки `os.Stat` не игнорируются**: создаётся issue `**LOW`** с текстом ошибки, чтобы операторы видели битые пути / deny по правам, а не «тихий» пропуск.
+- Если `stat` успешен: `**HIGH**` при наличии прав на запись у группы/прочих; `**MEDIUM**` при наличии прав на чтение у группы/прочих (см. реализацию по бит-маскам).
 
 ## Разработка
 
-### Установка зависимостей
-
-```bash
-go mod download
-```
-
-### Тесты
-
 ```bash
 go test ./...
-```
-
-### Линтер
-
-```bash
 golangci-lint run ./...
-```
-
-### Сборка
-
-```bash
-make build
-```
-
-### Цели Makefile
-
-- `make build` — собирает бинарник
-- `make test` — запускает тесты
-- `make lint` — запускает golangci-lint
-- `make docker` — собирает Docker-образ
-- `make run` — запускает бинарник
-- `make run-server` — запускает HTTP сервер на порту 8080
-- `make run-grpc` — запускает gRPC сервер на порту 9090
-- `make proto` — пересобирает proto-файлы
-
----
-
-## Severity
-
-
-| Severity | Описание                                                   |
-| -------- | ---------------------------------------------------------- |
-| HIGH     | Критические уязвимости, требующие немедленного исправления |
-| MEDIUM   | Потенциальные проблемы безопасности                        |
-| LOW      | Рекомендации по улучшению                                  |
-
-
----
-
-## Docker
-
-### Сборка образа
-
-```bash
-docker build -t config-analyzer .
-```
-
-### Запуск анализа файла
-
-```bash
-docker run --rm -v $(pwd):/app -w /app ./config-analyzer config.json
-```
-
-### Запуск HTTP сервера
-
-```bash
-docker run --rm -p 8080:8080 ./config-analyzer --server
-```
-
----
-
-## Лицензия
-
-MIT
-
----
-
-## Troubleshooting
-
-### Порт уже занят
-
-Если при запуске сервера получаете ошибку "address already in use", порт 8080 может быть занят другим процессом. Проверьте и остановите другие процессы:
-
-```bash
-# Linux/Mac
-lsof -i :8080
-netstat -an | grep 8080
-
-# Windows
-netstat -ano | findstr :8080
-```
-
-### Windows PowerShell и одинарные кавычки
-
-На Windows PowerShell может интерпретировать одинарные кавычки неправильно. Используйте двойные кавычки `"..."` вместо одинарных `'...'`:
-
-**Неправильно:**
-
-```powershell
-curl -X POST http://localhost:8080/analyze -d '{"log": {"level": "debug"}}'
-```
-
-**Правильно:**
-
-```powershell
-$body = @{
-    log = @{
-        level = "debug"
-    }
-    password = "secret123"
-} | ConvertTo-Json
-
-Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/json" -Body $body
-```
-
-### gRPC клиент не находит файлы
-
-Если gRPC клиент выдаёт ошибку "cannot find path" при попытке открыть `testdata/` — запустите клиент из подпапки, а не из корня проекта:
-
-```bash
-# Неправильно (из корня проекта — не найдёт testdata/)
-go run ./cmd/grpc-client/main.go
-
-# Правильно (из cmd/grpc-client/ — найдёт testdata/)
-cd cmd/grpc-client
-go run main.go
-```
-
-### Протоколы в примерах
-
-Для yaml запросов используйте тройные кавычки в PowerShell:
-
-**Неправильно:**
-
-```powershell
-curl -X POST http://localhost:8080/analyze -d 'data:\r\n  log:\r\n    level: debug\r\n  password: secret123'
-```
-
-**Правильно:**
-
-```powershell
-$body = @"
-log:
-  level: debug
-  password: secret123
-"@
-
-Invoke-RestMethod -Method Post -Uri "http://localhost:8080/analyze" -ContentType "application/yaml" -Body $body
 ```
 
