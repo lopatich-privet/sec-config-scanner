@@ -2,10 +2,10 @@
 
 CLI / HTTP / gRPC анализатор конфигураций **JSON и YAML**. Ориентирован на **DevSecOps / SRE**: выдаёт проблемы с `LOW`, `MEDIUM`, `HIGH` и возвращает ненулевой exit code при наличии проблем (кроме режима `--silent`).
 
-[Go Report Card](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
-[Go](https://go.dev/)
-[License: MIT](https://opensource.org/licenses/MIT)
-[golangci-lint](https://golangci-lint.run)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lopatich-privet/sec-config-scanner)](https://goreportcard.com/report/github.com/lopatich-privet/sec-config-scanner)
+![Go Version](https://img.shields.io/github/go-mod/go-version/lopatich-privet/sec-config-scanner)
+![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+[![golangci-lint](https://img.shields.io/badge/linters-golangci--lint-blue)](https://golangci-lint.run)
 
 ## Установка
 
